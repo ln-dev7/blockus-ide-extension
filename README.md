@@ -1,80 +1,86 @@
-# <img src="https://cdn.flyonui.com/fy-assets/logo/logo.png" alt="stagewise logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;" /> FlyonUI IDE Extension
+# <img src="https://blockus.lndevui.com/brand/logo.svg" alt="blockus logo" width="40" height="40" style="vertical-align: middle; margin-right: 8px;" /> blockus IDE Extension
 
-***Edit Your UI With a Prompt. No Context Switching.***
+***Drop production-ready React blocks into your project — without leaving your editor.***
 
-# FlyonUI IDE extension
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
- [![GitHub Repo stars](https://img.shields.io/github/stars/themeselection/flyonui-extension )](https://github.com/themeselection/flyonui-extension)
- [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/flyonui)](https://x.com/flyonui)
-
-> If you want to find out, why you would need this extension, read [What is the FlyonUI IDE extension?](#what-is-the-flyonui-ide-extension).
+> New here? Jump to [What is the blockus IDE extension?](#what-is-the-blockus-ide-extension).
 
 ## About the project
 
-This extension is a fork of [Stagewise](https://github.com/stagewise-io/stagewise).
+This extension is a fork of [Stagewise](https://github.com/stagewise-io/stagewise) (via [flyonui-extension](https://github.com/themeselection/flyonui-extension)). It keeps Stagewise's plumbing — the extension ↔ toolbar communication, DOM context selection, and AI-agent bridge — and replaces the block catalog with [**blockus**](https://blockus.lndevui.com): production-ready React blocks, crafted not generated.
 
-Welcome to **FlyonUI IDE Extension** — the tool for developers who want to make UI changes without context switching.
+Welcome to **blockus IDE Extension** — browse the blockus catalog, preview blocks, and install them in one click while you build.
 
-- 💬 Tell what you want to change
-- 🧠 Click on element(s) to let the agent know where a change should happen
-- 💡 Let FlyonUI IDE Extension do the magic!
-
-You can also use the [FlyonUI Blocks](https://flyonui.com/blocks) from the toolbar and from the extension window to insert them directly into your project.
-
-> Perfect for devs tired of pasting element information and folder paths into prompts. FlyonUI IDE Extension uses real-time, browser-powered context.
+- 🔎 Search blocks by name, category and tag
+- 🧱 Preview every block from the toolbar or the VS Code sidebar
+- ⚡ Install a block with one click via the shadcn CLI
+- 🔒 Unlock Pro blocks with your blockus API key (`bk_live_…`)
+- 🧠 Send a block (with its source) straight to your IDE's AI agent
 
 ## Features
 
-- ⚡ Works out of the box
-- 📖 Open source
-- ⛓️ Compatible with all kinds of frameworks
-- 🧠 Compatible with all IDEs and AI Agents
-- 🚀 Access to all the [FlyonUI Blocks](https://flyonui.com/blocks) from the FlyonUI Toolbar and IDE Extension
-- 📔 Add documentation of your framework as a context from toolbar.
+- ⚡ Works out of the box — `npx blockus-extension-cli`
+- 🧱 The full [blockus catalog](https://blockus.lndevui.com) in your editor
+- 🆓 Free + 🔒 Pro tiers, gated by your API key
+- 📦 One-click install: `pnpm dlx shadcn@latest add @blockus/<id>`
+- 🧠 Compatible with all IDEs and AI agents (via the Stagewise bridge)
+- 📖 Open source — AGPLv3
 
-## What is the FlyonUI IDE extension?
+## What is the blockus IDE extension?
 
-This extension connects the FlyonUI toolbar to agents included in many popular IDEs and extensions.
+The extension has two surfaces:
 
-When you start the FlyonUI CLI, the toolbar will search for other agents running locally.
+1. **The browser toolbar** — launched by `npx blockus-extension-cli`. It overlays your running app, lets you select DOM elements as context for your AI agent, and adds a **blockus Blocks** panel to browse and install blocks.
+2. **The VS Code sidebar panel** — a **blockus Blocks** view with the same search / category / Free-Pro experience, plus an *Install* action that runs the shadcn command in the integrated terminal.
 
-This way, you can use the FlyonUI toolbar to select elements and provide context to your AI agent without switching between your IDE and browser.
+Blocks come from the blockus registry:
 
-Apart from this, you can also use the FlyonUI Blocks from the toolbar to use them directly in your project.
+```
+GET https://blockus.lndevui.com/api/blocks         # full catalog (Bearer optional)
+GET https://blockus.lndevui.com/r/<block-id>.json  # a block's source (Bearer for Pro)
+```
+
+Free blocks install for everyone. Pro blocks unlock once you add your API key.
+
+### Installing a block
+
+```bash
+pnpm dlx shadcn@latest add @blockus/hero-01
+```
+
+For Pro blocks, set `BLOCKUS_API_KEY` in your project's `.env` (and in your `components.json` registry headers), or paste your key into the extension to unlock them.
 
 ### 🤖 Supported agents / IDEs
 
-| **Agent**      | **Supported**  |
-| -------------- | -------------- |
-| Cursor         | ✅             |
-| GitHub Copilot | ✅             |
-| Windsurf       | ✅             |
-| Cline          | ✅             |
-| Roo Code       | ✅             |
-| Kilo Code      | ✅             |
-| Trae           | ✅             |
+| **Agent**      | **Supported** |
+| -------------- | ------------- |
+| Cursor         | ✅            |
+| GitHub Copilot | ✅            |
+| Windsurf       | ✅            |
+| Cline          | ✅            |
+| Roo Code       | ✅            |
+| Kilo Code      | ✅            |
+| Trae           | ✅            |
 
 ## Credits 🤘
 
-We are grateful for the contributions of the open-source community, particularly:
+Grateful to the open-source projects this builds on:
 
--- [Stagewise](https://stagewise.io/)
+- [Stagewise](https://stagewise.io/) — the toolbar ↔ IDE plumbing
+- [shadcn/ui](https://ui.shadcn.com/) — the registry & install model
 
 ## 📜 License
 
-This extension is a fork of [Stagewise](https://stagewise.io). FlyonUI IDE Extension is developed by [themeselection](https://www.themeselection.com) and is offered under the AGPLv3 license.
-
-For more information on the license model, visit the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
+This extension is a fork of [Stagewise](https://stagewise.io) and is offered under the AGPLv3 license. For more information, see the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
 
 ## 💬 Community & Support
 
-- 👾 [Join our Discord](https://discord.com/invite/kBHkY7DekX)
-- 📖 Open an [issue on GitHub](https://github.com/themeselection/flyonui-extension/issues) for dev support.
-- 🐦 [Follow us on Twitter](https://x.com/flyonui)
+- 🌐 [blockus.lndevui.com](https://blockus.lndevui.com)
+- 📖 Open an [issue on GitHub](https://github.com/ln-dev7/blockus-ide-extension/issues) for support.
 
 ## Useful Links 🎁
 
-- [Tailwind Components](https://flyonui.com/)
-- [Tailwind Templates](https://flyonui.com/templates)
-- [Tailwind figma design system](https://flyonui.com/figma)
-- [Tailwind AI Builder](https://flyonui.com/mcp)
+- [blockus blocks](https://blockus.lndevui.com)
+- [Pricing](https://blockus.lndevui.com/pricing)
+- [Get an API key](https://blockus.lndevui.com/account/registry-token)

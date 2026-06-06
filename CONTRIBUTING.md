@@ -1,6 +1,6 @@
-# Contributing to stagewise
+# Contributing to blockus IDE Extension
 
-Welcome! This document provides an in-depth overview of the structure and architecture of the stagewise project. Understanding this layout will help you quickly find your way around the codebase and identify where to contribute.
+Welcome! This document provides an in-depth overview of the structure and architecture of the **blockus IDE Extension**. The project is a fork of [Stagewise](https://github.com/stagewise-io/stagewise) — it keeps Stagewise's monorepo plumbing (extension ↔ toolbar communication, DOM context, agent bridge) and replaces the block catalog with the [blockus](https://blockus.lndevui.com) registry. Understanding this layout will help you quickly find your way around the codebase and identify where to contribute.
 
 ---
 
@@ -134,6 +134,6 @@ pnpm changeset --empty
 
 ## Need Help?
 
-* 💬 Join our [Discord](https://discord.gg/gkdGsDYaKA) to ask questions and get support.
-* 🐛 Found a bug? Open a [GitHub Issue](https://github.com/stagewise-io/stagewise/issues).
-* 💡 Have a feature idea? Let's discuss it in [GitHub Discussions](#).
+* 🌐 Visit [blockus.lndevui.com](https://blockus.lndevui.com).
+* 🐛 Found a bug? Open a [GitHub Issue](https://github.com/ln-dev7/blockus-ide-extension/issues).
+* 💡 Have a feature idea? Let's discuss it in a GitHub issue.

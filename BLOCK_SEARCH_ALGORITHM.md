@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Block Search Algorithm is a sophisticated fuzzy search system designed for finding UI components and blocks within the FlyonUI extension. It combines local search capabilities with remote API integration to provide intelligent, typo-tolerant search functionality for developers.
+The Block Search Algorithm is a sophisticated fuzzy search system designed for finding UI components and blocks within the blockus extension. It combines local search capabilities with remote API integration to provide intelligent, typo-tolerant search functionality for developers.
 
 ## System Architecture
 
@@ -56,7 +56,7 @@ const UI_TERMS_TO_IGNORE = [
 
 ### Phase 2: API Metadata Search
 
-- Fetches component metadata from FlyonUI API
+- Fetches component metadata from blockus API
 - Uses the component search algorithm to find relevant categories/paths
 - Applies fuzzy scoring to metadata
 
