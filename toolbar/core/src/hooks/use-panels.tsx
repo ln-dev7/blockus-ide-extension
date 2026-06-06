@@ -8,6 +8,7 @@ const STORAGE_KEY = 'stagewise_toolbar_open_panels';
 interface PersistedState {
   isSettingsOpen: boolean;
   isChatOpen: boolean;
+  isBlocksOpen: boolean;
   openPlugin: string | null;
   agentConnectivityManuallyDismissed: boolean;
 }
@@ -66,6 +67,21 @@ interface PanelsContext {
   closeChat: () => void;
 
   /**
+   * Whether the blockus blocks panel is open
+   */
+  isBlocksOpen: boolean;
+
+  /**
+   * Open the blockus blocks panel
+   */
+  openBlocks: () => void;
+
+  /**
+   * Close the blockus blocks panel
+   */
+  closeBlocks: () => void;
+
+  /**
    * The name of the plugin that is open
    */
   openPluginName: string | null;
@@ -111,6 +127,10 @@ const PanelsContext = createContext<PanelsContext>({
   openChat: () => null,
   closeChat: () => null,
 
+  isBlocksOpen: false,
+  openBlocks: () => null,
+  closeBlocks: () => null,
+
   openPluginName: null,
   openPlugin: () => null,
   closePlugin: () => null,
@@ -135,6 +155,9 @@ export const PanelsProvider = ({
   );
   const [isChatOpenInternal, setIsChatOpen] = useState(
     persistedState.isChatOpen ?? false,
+  );
+  const [isBlocksOpenInternal, setIsBlocksOpen] = useState(
+    persistedState.isBlocksOpen ?? false,
   );
   const [openPluginInternal, setOpenPlugin] = useState<string | null>(
     persistedState.openPlugin ?? null,
@@ -163,6 +186,7 @@ export const PanelsProvider = ({
     const currentState: PersistedState = {
       isSettingsOpen: isSettingsOpenInternal,
       isChatOpen: isChatOpenInternal,
+      isBlocksOpen: isBlocksOpenInternal,
       openPlugin: openPluginInternal,
       agentConnectivityManuallyDismissed,
     };
@@ -170,6 +194,7 @@ export const PanelsProvider = ({
   }, [
     isSettingsOpenInternal,
     isChatOpenInternal,
+    isBlocksOpenInternal,
     openPluginInternal,
     agentConnectivityManuallyDismissed,
   ]);
@@ -276,6 +301,22 @@ export const PanelsProvider = ({
     isInitialLoad,
   ]);
 
+  const isBlocksOpen = useMemo(() => {
+    return (
+      !requiresUserAttention &&
+      availabilityStatus.isAvailable &&
+      isBlocksOpenInternal &&
+      !minimized &&
+      !isInitialLoad
+    );
+  }, [
+    requiresUserAttention,
+    availabilityStatus,
+    isBlocksOpenInternal,
+    minimized,
+    isInitialLoad,
+  ]);
+
   const openPluginName = useMemo(() => {
     return !requiresUserAttention &&
       availabilityStatus.isAvailable &&
@@ -301,6 +342,10 @@ export const PanelsProvider = ({
         isChatOpen,
         openChat: () => setIsChatOpen(true),
         closeChat: () => setIsChatOpen(false),
+
+        isBlocksOpen,
+        openBlocks: () => setIsBlocksOpen(true),
+        closeBlocks: () => setIsBlocksOpen(false),
 
         openPluginName,
         openPlugin: (pluginName: string) => setOpenPlugin(pluginName),

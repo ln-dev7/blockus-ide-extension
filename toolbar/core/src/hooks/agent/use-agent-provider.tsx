@@ -233,7 +233,7 @@ async function scanForAgents(
   startPort: number = DEFAULT_STARTING_PORT,
 ): Promise<AgentInfo[]> {
   console.info(
-    "[FlyonUI IDE Extension] The following errors are expected ✅\n\nThey happen because we're searching for available agents...",
+    "[blockus IDE Extension] The following errors are expected ✅\n\nThey happen because we're searching for available agents...",
   );
   console.debug(
     `[AgentProvider] Starting agent scan from port ${startPort}...`,
@@ -698,7 +698,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
 
                 // Only scan for agents once when connection is first lost
                 console.info(
-                  `[FlyonUI IDE Extension] Searching for available agents after connection loss...`,
+                  `[blockus IDE Extension] Searching for available agents after connection loss...`,
                 );
                 scanAgents();
               } else {

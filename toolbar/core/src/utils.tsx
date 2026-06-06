@@ -9,6 +9,7 @@ import type {
   SelectedElement,
   UserMessageMetadata,
 } from '@stagewise/agent-interface/toolbar';
+import { getRegistryItemUrl } from '@/api/blockus';
 
 export const companionAnchorTagName = 'stagewise-companion-anchor';
 const getIFrame = () => {
@@ -469,21 +470,22 @@ export const getSelectedDocInfo = (doc: DocsContextItem): SelectedDoc => {
   };
 };
 
-// API utility function for FlyOnUI API calls
+// Fetch a block's shadcn registry item (source) from the blockus registry.
+// `blockId` is the catalog id (e.g. "hero-01"). A Pro API key unlocks Pro blocks.
 const fetchBlockData = async (
-  path: string,
-  licenseKey: string | null,
+  blockId: string,
+  apiKey: string | null,
 ): Promise<string | null> => {
   try {
-    const url = `https://flyonui.com/api/mcp${path}?type=mcp`;
+    const url = getRegistryItemUrl(blockId);
 
     const headers: Record<string, string> = {
-      Accept: '*/*',
+      Accept: 'application/json',
       'Content-Type': 'application/json',
     };
 
-    if (licenseKey) {
-      headers['x-license-key'] = licenseKey;
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
     }
 
     const response = await fetch(url, {
@@ -493,7 +495,7 @@ const fetchBlockData = async (
 
     if (!response.ok) {
       console.warn(
-        `API call failed for path ${path}: ${response.status} ${response.statusText}`,
+        `Registry call failed for block ${blockId}: ${response.status} ${response.statusText}`,
       );
       return null;
     }
@@ -501,7 +503,7 @@ const fetchBlockData = async (
     const data = await response.text();
     return data;
   } catch (error) {
-    console.error(`Error making API call for path ${path}:`, error);
+    console.error(`Error fetching block ${blockId}:`, error);
     return null;
   }
 };
