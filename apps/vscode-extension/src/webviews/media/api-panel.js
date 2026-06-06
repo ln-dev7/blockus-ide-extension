@@ -1,742 +1,213 @@
-// Get VS Code API
-const vscode = acquireVsCodeApi();
+// blockus blocks panel — webview script.
+// Talks to ApiDataProvider (api-data-panel.ts) over the standard VS Code
+// webview message channel.
+(function () {
+  const vscode = acquireVsCodeApi();
 
-// Fuzzy search utility function
-function fuzzyMatch(text, query) {
-  if (!text || !query) return { match: false, score: 0 };
+  const BASE_URL = 'https://blockus.lndevui.com';
 
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
+  /** @type {{unlocked:boolean,total:number,blocks:any[]}} */
+  let state = { unlocked: false, total: 0, blocks: [] };
+  let query = '';
+  let activeCategory = 'all';
 
-  // Exact match gets highest score
-  if (lowerText.includes(lowerQuery)) {
-    return { match: true, score: 100 - lowerText.indexOf(lowerQuery) * 10 };
+  // --- elements --------------------------------------------------------------
+  const el = (id) => document.getElementById(id);
+  const loadingState = el('loading-state');
+  const errorState = el('error-state');
+  const errorMessage = el('error-message');
+  const emptyState = el('empty-state');
+  const grid = el('blocks-grid');
+  const categoriesEl = el('categories');
+  const apikeyStatus = el('apikey-status');
+
+  // --- helpers ---------------------------------------------------------------
+  function show(node, visible) {
+    if (node) node.style.display = visible ? '' : 'none';
   }
 
-  // Fuzzy matching algorithm
-  let textIndex = 0;
-  let queryIndex = 0;
-  const matches = [];
-  let consecutiveMatches = 0;
-  let totalScore = 0;
-
-  while (textIndex < lowerText.length && queryIndex < lowerQuery.length) {
-    if (lowerText[textIndex] === lowerQuery[queryIndex]) {
-      matches.push(textIndex);
-      consecutiveMatches++;
-      queryIndex++;
-
-      // Bonus for consecutive matches
-      totalScore += consecutiveMatches * 2;
-    } else {
-      consecutiveMatches = 0;
-    }
-    textIndex++;
+  function setLoading() {
+    show(loadingState, true);
+    show(errorState, false);
+    show(emptyState, false);
+    show(grid, false);
   }
 
-  // Check if all query characters were found
-  if (queryIndex === lowerQuery.length) {
-    // Bonus for matches at word boundaries
-    const wordBoundaryBonus =
-      matches.filter(
-        (index) =>
-          index === 0 ||
-          lowerText[index - 1] === ' ' ||
-          lowerText[index - 1] === '-' ||
-          lowerText[index - 1] === '_',
-      ).length * 5;
-
-    // Penalty for distance between matches
-    const spread =
-      matches.length > 1 ? matches[matches.length - 1] - matches[0] : 0;
-    const spreadPenalty = Math.floor(spread / lowerQuery.length);
-
-    totalScore += wordBoundaryBonus - spreadPenalty;
-
-    // Normalize score based on text length
-    const normalizedScore = Math.max(
-      0,
-      Math.min(100, totalScore * (lowerQuery.length / lowerText.length) * 50),
-    );
-
-    return { match: true, score: normalizedScore };
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
-  return { match: false, score: 0 };
-}
-
-function fuzzySearchItems(items, query, searchFields) {
-  if (!query.trim()) {
-    return items;
+  function uniqueCategories() {
+    return Array.from(new Set(state.blocks.map((b) => b.category))).sort();
   }
 
-  const results = [];
-
-  items.forEach((item) => {
-    let bestScore = 0;
-    let hasMatch = false;
-
-    // Search in specified fields
-    searchFields.forEach((field) => {
-      const fieldValue = getNestedProperty(item, field);
-      if (fieldValue) {
-        const result = fuzzyMatch(fieldValue, query);
-        if (result.match) {
-          hasMatch = true;
-          bestScore = Math.max(bestScore, result.score);
-        }
-      }
+  function filteredBlocks() {
+    const q = query.trim().toLowerCase();
+    return state.blocks.filter((b) => {
+      if (activeCategory !== 'all' && b.category !== activeCategory) return false;
+      if (!q) return true;
+      const hay = [b.name, b.category, ...(b.tags || [])].join(' ').toLowerCase();
+      return hay.includes(q);
     });
-
-    if (hasMatch) {
-      results.push({ item, score: bestScore });
-    }
-  });
-
-  // Sort by score (highest first)
-  results.sort((a, b) => b.score - a.score);
-
-  return results.map((result) => result.item);
-}
-
-function getNestedProperty(obj, path) {
-  return path.split('.').reduce((current, key) => {
-    return current && current[key] !== undefined ? current[key] : '';
-  }, obj);
-}
-
-function highlightMatches(text, query) {
-  if (!text || !query) return escapeHtml(text);
-
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-
-  // For exact matches, highlight the exact substring
-  if (lowerText.includes(lowerQuery)) {
-    const index = lowerText.indexOf(lowerQuery);
-    const before = text.substring(0, index);
-    const match = text.substring(index, index + query.length);
-    const after = text.substring(index + query.length);
-    return `${escapeHtml(before)}<mark class="search-highlight">${escapeHtml(match)}</mark>${escapeHtml(after)}`;
   }
 
-  // For fuzzy matches, highlight individual matching characters
-  let result = '';
-  let textIndex = 0;
-  let queryIndex = 0;
-
-  while (textIndex < text.length) {
-    if (
-      queryIndex < query.length &&
-      lowerText[textIndex] === lowerQuery[queryIndex]
-    ) {
-      result += `<mark class="search-highlight">${escapeHtml(text[textIndex])}</mark>`;
-      queryIndex++;
-    } else {
-      result += escapeHtml(text[textIndex]);
-    }
-    textIndex++;
+  // --- rendering -------------------------------------------------------------
+  function renderCategories() {
+    const cats = ['all', ...uniqueCategories()];
+    categoriesEl.innerHTML = cats
+      .map((cat) => {
+        const label = cat === 'all' ? 'All' : cat.replace(/-/g, ' ');
+        const cls = cat === activeCategory ? 'cat active' : 'cat';
+        return `<button class="${cls}" data-cat="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
+      })
+      .join('');
+    categoriesEl.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.getAttribute('data-cat');
+        renderCategories();
+        renderBlocks();
+      });
+    });
   }
 
-  return result;
-}
-
-// Main functions
-function refreshData() {
-  vscode.postMessage({
-    type: 'refresh',
-  });
-}
-
-function saveLicenseKey(event) {
-  event.preventDefault(); // Prevent form submission
-
-  const input = document.getElementById('license-key-input');
-  const licenseKey = input.value.trim();
-
-  // Disable button while saving
-  const saveBtn = document.getElementById('save-license-btn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving...';
-
-  vscode.postMessage({
-    type: 'saveLicenseKey',
-    licenseKey: licenseKey,
-  });
-}
-
-function openFlyonuiPro() {
-  vscode.postMessage({
-    type: 'openFlyonuiPro',
-  });
-}
-
-function fetchApiData() {
-  vscode.postMessage({
-    type: 'fetchApiData',
-  });
-}
-
-function validateLicense() {
-  const input = document.getElementById('license-key-input');
-  const licenseKey = input.value.trim();
-
-  vscode.postMessage({
-    type: 'validateLicense',
-    licenseKey: licenseKey,
-  });
-}
-
-// UI Update Functions
-function renderComponentCards(components) {
-  const grid = document.getElementById('components-grid');
-
-  // Clear existing content
-  grid.innerHTML = '';
-
-  // Add search functionality
-  const searchContainer = document.createElement('div');
-  searchContainer.className = 'search-container';
-  searchContainer.innerHTML = `
-    <input 
-      type="text" 
-      class="search-input" 
-      id="component-search" 
-      placeholder="🔍 Search components..."
-      oninput="filterComponents(this.value)"
-    />
-  `;
-  grid.appendChild(searchContainer);
-
-  // Add components count
-  const countContainer = document.createElement('div');
-  countContainer.className = 'components-count';
-  countContainer.id = 'components-count';
-  countContainer.textContent = `Found ${components.length} components Category`;
-  grid.appendChild(countContainer);
-
-  // Store original components for filtering
-  window.originalComponents = components;
-
-  // Render component cards
-  const cardsContainer = document.createElement('div');
-  cardsContainer.className = 'components-grid';
-  cardsContainer.id = 'cards-container';
-
-  components.forEach((component, index) => {
-    const card = createComponentCard(component, index);
-    cardsContainer.appendChild(card);
-  });
-
-  grid.appendChild(cardsContainer);
-}
-
-function createComponentCard(component, index, searchQuery = '') {
-  const card = document.createElement('div');
-  card.className = 'component-card';
-  card.setAttribute('data-component-index', index);
-
-  const displayName = searchQuery
-    ? highlightMatches(component.name, searchQuery)
-    : escapeHtml(component.name);
-
-  card.innerHTML = `
-    <img src="${escapeHtml(component.imgSrc || '')}" alt="${escapeHtml(component.name)}" class="component-image" onclick="openComponent('${escapeHtml(component.name)}', '${escapeHtml(component.path)}')" />
-    <div class="component-header">
-      <h3 class="component-name">${displayName}</h3>
-      <button class="icon-btn explore-btn" onclick="openComponent('${escapeHtml(component.name)}', '${escapeHtml(component.path)}')" title="Explore component blocks">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m9 18 6-6-6-6"/>
-        </svg>
-      </button>
-    </div>
-  `;
-
-  return card;
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text || '';
-  return div.innerHTML;
-}
-
-function copyComponentPath(path) {
-  // Use VS Code API to copy to clipboard
-  vscode.postMessage({
-    type: 'copyToClipboard',
-    text: path,
-  });
-
-  // Show temporary feedback
-  showCopyFeedback();
-}
-
-function openComponent(name, path) {
-  vscode.postMessage({
-    type: 'openComponent',
-    name: name,
-    path: path,
-  });
-}
-
-function copyBlockCode(path) {
-  vscode.postMessage({
-    type: 'copyBlockCode',
-    path: path,
-  });
-}
-
-function sendToIDEAgent(path, name) {
-  vscode.postMessage({
-    type: 'sendToIDEAgent',
-    path: path,
-    name: name,
-  });
-}
-
-function previewBlock(path, name) {
-  vscode.postMessage({
-    type: 'previewBlock',
-    path: path,
-    name: name,
-  });
-}
-
-function showCopyFeedback() {
-  // Create temporary feedback element
-  const feedback = document.createElement('div');
-  feedback.textContent = '✅ Copied to clipboard!';
-  feedback.style.cssText = `
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: var(--vscode-notificationsInfoIcon-foreground);
-    color: var(--vscode-foreground);
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    z-index: 1000;
-    animation: fadeInOut 2s ease-in-out;
-  `;
-
-  document.body.appendChild(feedback);
-
-  setTimeout(() => {
-    if (feedback.parentNode) {
-      feedback.parentNode.removeChild(feedback);
-    }
-  }, 2000);
-}
-
-function filterComponents(searchTerm) {
-  const components = window.originalComponents || [];
-  const searchQuery = searchTerm.trim();
-
-  if (!searchQuery) {
-    // Clear search query and show all components
-    window.currentComponentSearch = '';
-    renderFilteredComponents(components);
-    return;
-  }
-
-  // Use fuzzy search for components
-  const searchFields = ['name', 'description', 'path'];
-  const filtered = fuzzySearchItems(components, searchQuery, searchFields);
-
-  // Store current search query for highlighting
-  window.currentComponentSearch = searchQuery;
-  renderFilteredComponents(filtered);
-}
-
-function renderFilteredComponents(components) {
-  const cardsContainer = document.getElementById('cards-container');
-  const countContainer = document.getElementById('components-count');
-
-  if (!cardsContainer || !countContainer) return;
-
-  // Update count
-  countContainer.textContent = `Found ${components.length} components Category`;
-
-  // Clear and render filtered components
-  cardsContainer.innerHTML = '';
-
-  if (components.length === 0) {
-    const noResults = document.createElement('div');
-    noResults.className = 'no-results';
-    noResults.innerHTML = `
-      <p>🔍 No components found</p>
-      <p>Try adjusting your search terms</p>
-    `;
-    cardsContainer.appendChild(noResults);
-    return;
-  }
-
-  const searchQuery = window.currentComponentSearch || '';
-  components.forEach((component, index) => {
-    const card = createComponentCard(component, index, searchQuery);
-    cardsContainer.appendChild(card);
-  });
-}
-
-function filterBlocks(searchTerm) {
-  const blocks = window.originalBlocks || [];
-  const searchQuery = searchTerm.trim();
-
-  if (!searchQuery) {
-    // Clear search query and show all blocks
-    window.currentBlockSearch = '';
-    renderFilteredBlocks(blocks);
-    return;
-  }
-
-  // Use fuzzy search for blocks - search in name, title, path, and description
-  const searchFields = ['name', 'title', 'path', 'description'];
-  const filtered = fuzzySearchItems(blocks, searchQuery, searchFields);
-
-  // Store current search query for highlighting
-  window.currentBlockSearch = searchQuery;
-  renderFilteredBlocks(filtered);
-}
-
-function renderFilteredBlocks(blocks) {
-  const blocksContainer = document.getElementById('blocks-container');
-  const countContainer = document.getElementById('blocks-count');
-
-  if (!blocksContainer || !countContainer) return;
-
-  // Update count
-  countContainer.textContent = `Found ${blocks.length} blocks`;
-
-  // Clear and render filtered blocks
-  blocksContainer.innerHTML = '';
-
-  if (blocks.length === 0) {
-    const noResults = document.createElement('div');
-    noResults.className = 'no-results';
-    noResults.innerHTML = `
-      <p>🔍 No blocks found</p>
-      <p>Try adjusting your search terms</p>
-    `;
-    blocksContainer.appendChild(noResults);
-    return;
-  }
-
-  const searchQuery = window.currentBlockSearch || '';
-  blocks.forEach((block, index) => {
-    const blockCard = createBlockCard(block, index, searchQuery);
-    blocksContainer.appendChild(blockCard);
-  });
-}
-
-function showComponentDetails(blocks, componentName, componentPath, error) {
-  const emptyState = document.getElementById('empty-state');
-  const errorState = document.getElementById('error-state');
-  const dataContainer = document.getElementById('api-data-container');
-
-  // Hide loading state
-  showLoadingState(false);
-
-  // Hide other states
-  emptyState.style.display = 'none';
-  errorState.style.display = 'none';
-  dataContainer.style.display = 'block';
-
-  // Render component details view
-  renderComponentDetails(blocks, componentName, componentPath, error);
-}
-
-function renderComponentDetails(blocks, componentName, componentPath, error) {
-  console.log('renderComponentDetails called with:', {
-    blocks,
-    componentName,
-    componentPath,
-    error,
-  });
-
-  const grid = document.getElementById('components-grid');
-
-  // Clear existing content
-  grid.innerHTML = '';
-
-  // Create header with back button
-  const header = document.createElement('div');
-  header.className = 'details-header';
-  header.innerHTML = `
-    <button class="back-btn" onclick="goBackToComponents()">
-      ← Back to Components
-    </button>
-    <h2 class="details-title">${escapeHtml(componentName)}</h2>
-  `;
-  grid.appendChild(header);
-
-  // Handle error case
-  if (error) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'no-results';
-    errorDiv.innerHTML = `
-      <p>❌ Error loading component details</p>
-      <p>${escapeHtml(error)}</p>
-    `;
-    grid.appendChild(errorDiv);
-    return;
-  }
-
-  // Check if blocks exist and have content
-  if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
-    const noBlocks = document.createElement('div');
-    noBlocks.className = 'no-results';
-    noBlocks.innerHTML = `
-      <p>📄 No blocks found.</p>
-      <p>Please <a href="https://www.flyonui.com/pro">Upgrade to Pro</a> for more blocks.</p>
-    `;
-    grid.appendChild(noBlocks);
-    return;
-  }
-
-  // Add search functionality for blocks
-  const searchContainer = document.createElement('div');
-  searchContainer.className = 'search-container';
-  searchContainer.innerHTML = `
-    <input 
-      type="text" 
-      class="search-input" 
-      id="blocks-search" 
-      placeholder="🔍 Search blocks..."
-      oninput="filterBlocks(this.value)"
-    />
-  `;
-  grid.appendChild(searchContainer);
-
-  // Add blocks count
-  const countContainer = document.createElement('div');
-  countContainer.className = 'blocks-count';
-  countContainer.id = 'blocks-count';
-  countContainer.textContent = `Found ${blocks.length} blocks`;
-  grid.appendChild(countContainer);
-
-  // Store original blocks for filtering
-  window.originalBlocks = blocks;
-
-  // Create blocks container
-  const blocksContainer = document.createElement('div');
-  blocksContainer.className = 'blocks-container';
-  blocksContainer.id = 'blocks-container';
-
-  blocks.forEach((block, index) => {
-    const blockCard = createBlockCard(block, index);
-    blocksContainer.appendChild(blockCard);
-  });
-
-  grid.appendChild(blocksContainer);
-}
-
-function createBlockCard(block, index, searchQuery = '') {
-  const card = document.createElement('div');
-  card.className = 'block-card';
-
-  // Handle different possible block structures
-  const blockName = block.name || block.title || `Block ${index + 1}`;
-  const displayName = searchQuery
-    ? highlightMatches(blockName, searchQuery)
-    : escapeHtml(blockName);
-  const imgUrl = `https://cdn.flyonui.com/fy-assets/extension${block.path}.png`;
-
-  card.innerHTML = `
-    ${imgUrl ? `<img src="${imgUrl}" alt="${escapeHtml(blockName)}" class="component-image" />` : ''}
-    <div class="block-header">
-      <h3 class="block-name">${displayName}</h3>
-      <div class="block-actions">
-        <button class="icon-btn preview-btn" onclick="previewBlock('${escapeHtml(block.path)}', '${escapeHtml(blockName)}')" title="Preview block">
-          <svg xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke-width="2" 
-              stroke="currentColor" 
-              width="16" 
-              height="16">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          </svg>
+  function blockCard(b) {
+    const locked = b.isPro && !b.installable;
+    const preview = b.previewImage || `${BASE_URL}/preview/${b.id}`;
+    const proBadge = b.isPro
+      ? `<span class="badge ${locked ? 'locked' : ''}">${locked ? '🔒 ' : ''}Pro</span>`
+      : '';
+    const action = locked
+      ? `<button class="btn locked" data-action="unlock" title="Add your API key to unlock">🔒 Unlock Pro</button>`
+      : `<button class="btn install" data-action="install" data-id="${escapeHtml(b.id)}">Install</button>`;
+
+    return `
+      <div class="card">
+        <button class="preview" data-action="preview" data-id="${escapeHtml(b.id)}" title="Open preview">
+          <img loading="lazy" src="${escapeHtml(preview)}" alt="${escapeHtml(b.name)}" onerror="this.style.display='none'" />
+          ${proBadge}
         </button>
-        <button class="icon-btn copy-btn" onclick="copyBlockCode('${escapeHtml(block.path)}')" title="Copy code to clipboard">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-        </button>
-        <button class="icon-btn agent-btn" onclick="sendToIDEAgent('${escapeHtml(block.path)}', '${escapeHtml(blockName)}')" title="Send to IDE Agent">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <circle cx="12" cy="5" r="2"></circle>
-            <path d="M12 7v4"></path>
-            <line x1="8" y1="16" x2="8" y2="16"></line>
-            <line x1="16" y1="16" x2="16" y2="16"></line>
-          </svg>
-        </button>
-      </div>
-    </div>
-  `;
-
-  return card;
-}
-
-function goBackToComponents() {
-  // Re-fetch the original component list
-  fetchApiData();
-}
-
-function showLoadingState(loading) {
-  const fetchBtn = document.getElementById('fetch-api-btn');
-  const emptyState = document.getElementById('empty-state');
-  const loadingState = document.getElementById('loading-state');
-  const errorState = document.getElementById('error-state');
-  const dataContainer = document.getElementById('api-data-container');
-
-  if (loading) {
-    if (fetchBtn) {
-      fetchBtn.disabled = true;
-      fetchBtn.textContent = '⏳ Fetching...';
-    }
-    emptyState.style.display = 'none';
-    loadingState.style.display = 'block';
-    errorState.style.display = 'none';
-    dataContainer.style.display = 'none';
-  } else {
-    if (fetchBtn) {
-      fetchBtn.disabled = false;
-      fetchBtn.textContent = '📡 Fetch Data';
-    }
-    loadingState.style.display = 'none';
-  }
-}
-
-function showApiData(data, error) {
-  const emptyState = document.getElementById('empty-state');
-  const errorState = document.getElementById('error-state');
-  const dataContainer = document.getElementById('api-data-container');
-  const errorMessage = document.getElementById('error-message');
-
-  // Hide loading state
-  showLoadingState(false);
-
-  if (error) {
-    // Show error state
-    emptyState.style.display = 'none';
-    errorState.style.display = 'block';
-    dataContainer.style.display = 'none';
-    errorMessage.textContent = error;
-  } else if (data && Array.isArray(data) && data.length > 0) {
-    // Show data
-    emptyState.style.display = 'none';
-    errorState.style.display = 'none';
-    dataContainer.style.display = 'block';
-
-    renderComponentCards(data);
-  } else {
-    // Show empty state
-    emptyState.style.display = 'block';
-    errorState.style.display = 'none';
-    dataContainer.style.display = 'none';
-  }
-}
-
-function updateLicenseStatus(isValid, licenseKey, resetButton = true) {
-  const statusElement = document.getElementById('license-status');
-  const input = document.getElementById('license-key-input');
-  const currentLicenseDiv = document.getElementById('license-current');
-  const currentLicenseText = document.getElementById('current-license-text');
-  const licenseDescription = document.querySelector('.license-description');
-
-  // Re-enable save button if requested
-  if (resetButton) {
-    const saveBtn = document.getElementById('save-license-btn');
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save';
+        <div class="card-body">
+          <div class="card-meta">
+            <div class="card-name">${escapeHtml(b.name)}</div>
+            <div class="card-cat">${escapeHtml(b.category)}</div>
+          </div>
+        </div>
+        <div class="card-actions">
+          ${action}
+          <button class="btn ghost" data-action="agent" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" title="Send to IDE agent">Ask agent</button>
+        </div>
+      </div>`;
   }
 
-  if (isValid && licenseKey) {
-    statusElement.textContent = 'Valid';
-    statusElement.className = 'license-status valid';
-    input.value = licenseKey;
-    currentLicenseDiv.style.display = 'block';
-    currentLicenseText.textContent = licenseKey;
-    // Hide license description when license is valid
-    if (licenseDescription) {
-      licenseDescription.style.display = 'none';
-    }
-  } else if (licenseKey) {
-    statusElement.textContent = 'Invalid';
-    statusElement.className = 'license-status invalid';
-    currentLicenseDiv.style.display = 'none';
-    // Show license description when license is invalid
-    if (licenseDescription) {
-      licenseDescription.style.display = 'block';
-    }
-  } else {
-    statusElement.textContent = 'No License';
-    statusElement.className = 'license-status none';
-    currentLicenseDiv.style.display = 'none';
-    // Show license description when no license
-    if (licenseDescription) {
-      licenseDescription.style.display = 'block';
-    }
-  }
-}
+  function renderBlocks() {
+    const blocks = filteredBlocks();
+    apikeyStatus.textContent = state.unlocked ? 'Pro unlocked' : 'Free tier';
+    apikeyStatus.className = state.unlocked
+      ? 'apikey-status unlocked'
+      : 'apikey-status';
 
-function toggleLicenseMenu() {
-  const licenseMenu = document.querySelector('.license-content');
-  licenseMenu.style.display =
-    licenseMenu.style.display === 'none' ? 'block' : 'none';
-}
+    show(loadingState, false);
+    show(errorState, false);
 
-// Message listener for communication with extension
-window.addEventListener('message', (event) => {
-  const message = event.data;
-  switch (message.type) {
-    case 'initialData':
-      // Set initial license status on load
-      if (message.licenseKey) {
-        updateLicenseStatus(message.isValid, message.licenseKey, false);
-        // Auto-fetch data if license is valid
-        if (message.isValid) {
-          fetchApiData();
+    if (blocks.length === 0) {
+      show(emptyState, true);
+      show(grid, false);
+      return;
+    }
+
+    show(emptyState, false);
+    show(grid, true);
+    grid.innerHTML = blocks.map(blockCard).join('');
+
+    grid.querySelectorAll('[data-action]').forEach((node) => {
+      node.addEventListener('click', () => {
+        const action = node.getAttribute('data-action');
+        const id = node.getAttribute('data-id');
+        if (action === 'install') {
+          vscode.postMessage({ type: 'installBlock', id });
+        } else if (action === 'preview') {
+          vscode.postMessage({ type: 'previewBlock', id });
+        } else if (action === 'agent') {
+          vscode.postMessage({
+            type: 'sendToAgent',
+            id,
+            name: node.getAttribute('data-name'),
+          });
+        } else if (action === 'unlock') {
+          el('apikey-input').focus();
         }
-      }
-      break;
-    case 'licenseValidated':
-      updateLicenseStatus(message.isValid, message.licenseKey);
-      break;
-    case 'apiDataLoading':
-      showLoadingState(message.loading);
-      break;
-    case 'apiDataReceived':
-      showApiData(message.data, message.error);
-      break;
-    case 'componentDetailsReceived':
-      showComponentDetails(
-        message.data,
-        message.componentName,
-        message.componentPath,
-        message.error,
-      );
-      break;
+      });
+    });
   }
-});
 
-// Make functions globally accessible
-window.filterComponents = filterComponents;
-window.filterBlocks = filterBlocks;
-window.openComponent = openComponent;
-window.goBackToComponents = goBackToComponents;
-window.copyBlockCode = copyBlockCode;
-window.sendToIDEAgent = sendToIDEAgent;
-window.previewBlock = previewBlock;
+  function renderError(message) {
+    show(loadingState, false);
+    show(grid, false);
+    show(emptyState, false);
+    show(errorState, true);
+    errorMessage.textContent = message || 'Something went wrong.';
+  }
 
-// Initialize UI when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Request initial license data from extension
-  vscode.postMessage({
-    type: 'requestInitialData',
+  // --- events ----------------------------------------------------------------
+  el('refresh-btn').addEventListener('click', () => {
+    setLoading();
+    vscode.postMessage({ type: 'refresh' });
   });
-});
+
+  el('retry-btn').addEventListener('click', () => {
+    setLoading();
+    vscode.postMessage({ type: 'refresh' });
+  });
+
+  el('get-pro-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    vscode.postMessage({ type: 'openExternal', url: `${BASE_URL}/pricing` });
+  });
+
+  el('apikey-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const apiKey = el('apikey-input').value.trim();
+    setLoading();
+    vscode.postMessage({ type: 'saveApiKey', apiKey });
+  });
+
+  let searchTimer = null;
+  el('search-input').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    const value = e.target.value;
+    searchTimer = setTimeout(() => {
+      query = value;
+      renderBlocks();
+    }, 250);
+  });
+
+  // --- message handling ------------------------------------------------------
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    switch (data.type) {
+      case 'loading':
+        if (data.loading) setLoading();
+        break;
+      case 'catalog':
+        state = {
+          unlocked: !!data.unlocked,
+          total: data.total || 0,
+          blocks: Array.isArray(data.blocks) ? data.blocks : [],
+        };
+        renderCategories();
+        renderBlocks();
+        break;
+      case 'error':
+        renderError(data.message);
+        break;
+    }
+  });
+
+  // Kick things off.
+  setLoading();
+  vscode.postMessage({ type: 'requestInitialData' });
+})();

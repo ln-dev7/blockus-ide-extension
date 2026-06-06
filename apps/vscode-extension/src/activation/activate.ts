@@ -21,10 +21,10 @@ let ideAgentInitialized = false;
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
-  vscode.languages.createDiagnosticCollection('flyonui');
+  vscode.languages.createDiagnosticCollection('blockus');
 
-// Create output channel for FlyonUI
-const outputChannel = vscode.window.createOutputChannel('FlyonUI');
+// Create output channel for blockus
+const outputChannel = vscode.window.createOutputChannel('blockus');
 
 // Handler for the setupToolbar command
 async function removeOldToolbarHandler() {
@@ -98,8 +98,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // Add configuration change listener to track telemetry setting changes
     const configChangeListener = vscode.workspace.onDidChangeConfiguration(
       async (e) => {
-        if (e.affectsConfiguration('flyonui.telemetry.enabled')) {
-          const config = vscode.workspace.getConfiguration('flyonui');
+        if (e.affectsConfiguration('blockus.telemetry.enabled')) {
+          const config = vscode.workspace.getConfiguration('blockus');
           const telemetryEnabled = config.get<boolean>(
             'telemetry.enabled',
             true,
@@ -150,7 +150,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(workspaceFolderListener);
 
     const setAgentCommand = vscode.commands.registerCommand(
-      'flyonui.setAgent',
+      'blockus.setAgent',
       async () => {
         await agentSelectorService.showAgentPicker();
       },
@@ -168,19 +168,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Command to focus the API Data view
     const focusApiDataViewCommand = vscode.commands.registerCommand(
-      'flyonui.focusApiDataView',
+      'blockus.focusApiDataView',
       async () => {
-        await vscode.commands.executeCommand('flyonui.apiDataView.focus');
+        await vscode.commands.executeCommand('blockus.apiDataView.focus');
       },
     );
     context.subscriptions.push(focusApiDataViewCommand);
 
     // Keep the old command for backward compatibility (optional)
     const disposablePanel = vscode.commands.registerCommand(
-      'flyonui.openDataPanel',
+      'blockus.openDataPanel',
       () => {
         vscode.window.showInformationMessage(
-          'API Data Panel is now available in the sidebar. Look for the FlyonUI icon in the Activity Bar.',
+          'blockus Blocks panel is now available in the sidebar. Look for the blockus icon in the Activity Bar.',
         );
       },
     );
