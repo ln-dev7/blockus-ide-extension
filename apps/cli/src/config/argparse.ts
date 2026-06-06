@@ -27,8 +27,10 @@ let authSubcommand: string | undefined;
 let telemetrySubcommand: string | undefined;
 
 program
-  .name('stagewise')
-  .description('Stagewise CLI - Development Proxy & AI Coding Assistant')
+  .name('blockus-extension-cli')
+  .description(
+    'blockus IDE Extension CLI — runs the in-browser blockus toolbar and bridges it to your AI agent',
+  )
   .version('0.0.1')
   .option<number>(
     '-p, --port [port]',

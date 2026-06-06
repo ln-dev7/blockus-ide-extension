@@ -1,6 +1,6 @@
 {
   "name": "blockus-extension-cli",
-  "module": "src/index.ts",
+  "main": "dist/index.cjs",
   "type": "module",
   "version": "0.2.8",
   "description": "blockus Extension CLI — runs the in-browser blockus toolbar.",
@@ -15,7 +15,10 @@
     "blockus-extension-cli": "dist/index.cjs"
   },
   "files": [
-    "dist"
+    "dist/index.cjs",
+    "dist/toolbar-app",
+    "dist/plugins",
+    "dist/THIRD_PARTY_LICENSES.txt"
   ],
   "publishConfig": {
     "access": "public"
