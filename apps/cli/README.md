@@ -1,77 +1,82 @@
-# <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
+# <img src="https://blockus.lndevui.com/brand/logo.svg" alt="blockus logo" width="40" height="40" style="vertical-align: middle; margin-right: 8px;" /> blockus IDE Extension CLI
 
-# The frontend coding agent for production codebases
+# Launch the blockus toolbar in your browser, while you develop
 
-![NPM Version](https://img.shields.io/npm/v/stagewise) ![NPM License](https://img.shields.io/npm/l/stagewise) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise)
+![NPM Version](https://img.shields.io/npm/v/blockus-extension-cli) ![NPM License](https://img.shields.io/npm/l/blockus-extension-cli) [![GitHub Repo stars](https://img.shields.io/github/stars/ln-dev7/blockus-ide-extension)](https://github.com/ln-dev7/blockus-ide-extension)
 
-[![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/gkdGsDYaKA) [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/stagewise_io)](https://x.com/stagewise_io)
+## About
 
-![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
+`blockus-extension-cli` runs the **blockus** toolbar as an overlay on top of your app in development. From the toolbar you can:
 
-## About the project
-
-Welcome to **stagewise** —  The frontend coding agent for production codebases
-
-- 💬 Tell the agent what you want to change
-- 🧠 Click on element(s) to let the agent know where a change should happen
-- 💡 Let stagewise do the magic!
-
-> Perfect for devs tired of pasting element information and folder paths into prompts. stagewise uses real-time, browser-powered context.
-
-## Features
-
-- ⚡ Works out of the box
-- 🧩 Customize and extend functionality with Plugins
-- 📖 Open source
-- ⛓️ Compatible with all kinds of frameworks
-- 🧠 Use our dedicated frontend agent - or any other compatible agent through our open agent interface!
+- 🧱 Browse and search the [blockus](https://blockus.lndevui.com) catalog of production-ready React blocks
+- ⚡ Install any block in one click via the shadcn registry (`@blockus/<id>`)
+- 🔒 Unlock Pro blocks with your blockus API key (`bk_live_…`)
+- 🧠 Select DOM elements and send rich, browser-powered context to your AI agent — no copy-pasting paths
 
 ## 📖 Getting Started
 
 ### 1. Start your web app in development mode
 
-The first thing you should do is to start your app in regular development mode
+Run your app the way you normally do (Next.js on port `3000`, Vite on `5173`, etc.).
 
-### 2. Start stagewise
+### 2. Start the blockus toolbar
 
-stagewise can be integrated into your workflow without requiring you to install anything!
-
-Simply open another terminal window **in the root of your app under development** and enter the following:
+In another terminal, **at the root of your app**, run:
 
 ```bash
-npx stagewise
+npx blockus-extension-cli
 ```
 
-or (if you're using pnpm):
+or, with pnpm:
 
 ```bash
-pnpm dlx stagewise
+pnpm dlx blockus-extension-cli
 ```
 
-And simply follow the short guide of the CLI app to setup your stagewise account.
+The CLI opens your browser with the toolbar attached to your running app. Useful flags:
+
+```bash
+npx blockus-extension-cli --app-port 3000   # Next.js dev server
+npx blockus-extension-cli --app-port 5173   # Vite dev server
+npx blockus-extension-cli --help            # all options
+```
+
+### 3. Install blocks
+
+Open the **blockus Blocks** panel, find a block, and click **Install** — or run it yourself:
+
+```bash
+pnpm dlx shadcn@latest add @blockus/hero-01
+```
+
+For Pro blocks, add your key to your project `.env`:
+
+```bash
+BLOCKUS_API_KEY=bk_live_xxxxxxxxxxxxxxxxxxxxxxxx
+```
 
 ## 🤖 Agent support
 
-| **Agent**      | **Supported**  |
-| -------------- | -------------- |
-| stagewise agent| ✅ ⭐️           |
-| Cursor         | ✅             |
-| GitHub Copilot | ✅             |
-| Windsurf       | ✅             |
-| Cline          | ✅             |
-| Roo Code       | ✅             |
-| Kilo Code      | ✅             |
-| Trae           | ✅             |
+| **Agent**      | **Supported** |
+| -------------- | ------------- |
+| Cursor         | ✅            |
+| GitHub Copilot | ✅            |
+| Windsurf       | ✅            |
+| Cline          | ✅            |
+| Roo Code       | ✅            |
+| Kilo Code      | ✅            |
+| Trae           | ✅            |
+
+## 🔗 Links
+
+- 🌐 [blockus.lndevui.com](https://blockus.lndevui.com)
+- 📦 [GitHub repo](https://github.com/ln-dev7/blockus-ide-extension)
+- 🐛 [Report an issue](https://github.com/ln-dev7/blockus-ide-extension/issues)
 
 ## 📜 License
 
-stagewise is developed by tiq UG (haftungsbeschränkt) and offered under the AGPLv3 license.
+This project is offered under the **AGPLv3** license. For more information, see the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
 
-For more information on the license model, visit the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
+---
 
-For use cases that fall outside the scope permitted by the AGPLv3 license, feel free to [📬 Contact Us](#contact-us-section).
-
-## 💬 Community & Support
-
-- 👾 [Join our Discord](https://discord.gg/gkdGsDYaKA)
-- 📖 Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
+Built on top of [stagewise](https://github.com/stagewise-io/stagewise) (AGPLv3) — the toolbar ↔ IDE plumbing this CLI relies on. All credit for that foundation goes to the stagewise project.
