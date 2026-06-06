@@ -117,8 +117,8 @@ export function AgentConnectivityPanel() {
           <div className="space-y-3">
             <p className="text-muted-foreground text-sm">
               {connectedUnavailable
-                ? 'The connection to the Stagewise CLI has been lost. The toolbar is attempting to reconnect automatically.'
-                : 'Establishing connection to the Stagewise CLI...'}
+                ? 'The connection to the blockus CLI has been lost. The toolbar is attempting to reconnect automatically.'
+                : 'Establishing connection to the blockus CLI...'}
             </p>
             <p className="text-muted-foreground text-sm">Please ensure that:</p>
             <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
@@ -158,7 +158,7 @@ export function AgentConnectivityPanel() {
           </DropdownMenuButton>
           <DropdownMenuContent>
             <DropdownMenuLinkItem
-              href="https://stagewise.io/docs"
+              href="https://blockus.lndevui.com"
               target="_blank"
             >
               Read the docs

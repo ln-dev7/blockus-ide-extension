@@ -947,10 +947,10 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
         // Create a fake agent info for the app-hosted agent
         const appAgent: AgentInfo = {
           port: appPort,
-          name: 'Stagewise CLI Agent',
+          name: 'blockus CLI Agent',
           description: 'Integrated with application',
           info: {
-            name: 'Stagewise CLI Agent',
+            name: 'blockus CLI Agent',
             description: 'Integrated with application',
             capabilities: {
               toolCalling: true,
