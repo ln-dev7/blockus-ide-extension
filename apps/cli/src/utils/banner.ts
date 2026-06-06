@@ -17,42 +17,41 @@ export function getVersion(): string {
 }
 
 function displayAsciiLogo(): void {
-  // Define the colors for the FlyonUI primary color in gradient variations.
-
-  // Converting to hex and creating a subtle gradient
+  // blockus uses a neutral, monochrome brand. Render the mark in a subtle
+  // light-to-dark grayscale gradient.
   const gradientColors = [
-    chalk.hex('#8A73DB'), // Lighter shade
-    chalk.hex('#7E66D6'),
-    chalk.hex('#7359D1'), // Primary color
-    chalk.hex('#6A4FCC'),
-    chalk.hex('#614AC7'), // Darker shade
+    chalk.hex('#FFFFFF'),
+    chalk.hex('#D4D4D4'),
+    chalk.hex('#A3A3A3'),
+    chalk.hex('#737373'),
+    chalk.hex('#525252'),
   ];
 
   // Define the color for the inner part of the logo (the "kernel").
   const kernelColor = chalk.white.bold;
 
-  // The ASCII art for the logo.
+  // The ASCII art for the logo — a quarter-circle, the blockus mark.
   const logo = [
-    ' @@@@@@@@@@@@@@@@@  ',
-    '@@@@@@@@@@@@@@@@@@@@',
-    '@@@@@@@@    @@@@@@@@',
-    '@@@@@@@      @@@@@@@',
-    '@@@@@@  @@@@  @@@@@@',
-    '@@@@   @@@@@@   @@@@',
-    '@@@@@@@@@   @@@@@@@@',
-    '@@@@@@@@@@@@@@@@@@@@',
-    ' @@@@@@@@@@@@@@@@@@ ',
+    '@@@@@@@@@@         ',
+    '@@@@@@@@@@@@@      ',
+    '@@@@@@@@@@@@@@@    ',
+    '@@@@@@     @@@@@   ',
+    '@@@@@        @@@@  ',
+    '@@@@@         @@@  ',
+    '@@@@@          @@  ',
+    '@@@@@          @@  ',
+    '@@@@@          @@  ',
   ];
 
   const textArt = [
     '                                      ',
     '                                      ',
-    '    ________                        _ ',
-    '   / ____/ /_  _______ _____ __  __(_)',
-    '  / /_  / / / / / __  / __  / / / / / ',
-    ' / __/ / / /_/ / /_/ / / / / /_/ / /  ',
-    '/_/   /_/___, /_____/_/ /_/___,_/_/   ',
-    '        /____/                        ',
+    '   __    __           __              ',
+    '  / /_  / /___  _____/ /____  _______ ',
+    ' / __ \\/ / __ \\/ ___/ //_/ / / / ___/ ',
+    '/ /_/ / / /_/ / /__/ ,< / /_/ (__  )  ',
+    '/_.___/_/\\____/\\___/_/|_|\\__,_/____/  ',
+    '                                      ',
     '                                      ',
   ];
 
@@ -112,12 +111,10 @@ export function printBanner(silent: boolean): void {
    * with a white-filled center.
    */
 
-  // createAsciiCircle(10, 'W', chalk.blue);
   displayAsciiLogo();
   console.log();
   console.log(
-    chalk.hex('#7359D1').bold('     FLYONUI EXTENSION') +
-      chalk.gray(` v${version}`),
+    chalk.white.bold('     blockus IDE Extension') + chalk.gray(` v${version}`),
   );
   console.log();
   console.log();
@@ -131,8 +128,6 @@ export function printCompactBanner(silent: boolean): void {
   const version = getVersion();
 
   console.log();
-  console.log(
-    chalk.hex('#7359D1').bold('  FLYONUI') + chalk.gray(` v${version}`),
-  );
+  console.log(chalk.white.bold('  blockus') + chalk.gray(` v${version}`));
   console.log();
 }
