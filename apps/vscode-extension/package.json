@@ -4,7 +4,7 @@
   "private": true,
   "description": "Browse and install blockus blocks — production-ready React blocks — without leaving your editor.",
   "version": "1.0.4",
-  "publisher": "lndevui",
+  "publisher": "ln-dev",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"

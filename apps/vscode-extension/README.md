@@ -1,4 +1,4 @@
-# <img src="https://blockus.lndevui.com/brand/logo.svg" alt="blockus logo" width="40" height="40" style="vertical-align: middle; margin-right: 8px;" /> blockus IDE Extension
+# <img src="https://blockus.lndevui.com/brand/logo.png" alt="blockus logo" width="40" height="40" style="vertical-align: middle; margin-right: 8px;" /> blockus IDE Extension
 
 ***Drop production-ready React blocks into your project — without leaving your editor.***
 
