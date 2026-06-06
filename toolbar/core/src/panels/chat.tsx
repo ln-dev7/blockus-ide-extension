@@ -89,25 +89,25 @@ export function ChatPanel() {
 
   // Handle @ menu selection
   const handleAtMenuSelect = useCallback(
-    (type: 'docs' | 'blocks' | 'flyonui-docs') => {
-      // Handle direct FlyonUI docs selection
-      if (type === 'flyonui-docs') {
-        // Directly add FlyonUI docs to context
-        const flyonUIDoc: DocsItem = {
-          id: '/themeselection/flyonui-docs',
-          title: 'FlyonUI',
+    (type: 'docs' | 'blocks' | 'blockus-docs') => {
+      // Handle direct blockus docs selection
+      if (type === 'blockus-docs') {
+        // Directly add blockus docs to context
+        const blockusDoc: DocsItem = {
+          id: '/blockus/docs',
+          title: 'blockus',
           description:
-            'The easiest, free and open-source Tailwind CSS component library',
+            'Production-ready React blocks. Crafted, not generated. Drop in blockus and ship.',
           category: 'popular',
         };
 
         chatState.addChatDocsContext({
-          id: flyonUIDoc.id,
-          title: flyonUIDoc.title,
-          description: flyonUIDoc.description,
-          category: flyonUIDoc.category,
+          id: blockusDoc.id,
+          title: blockusDoc.title,
+          description: blockusDoc.description,
+          category: blockusDoc.category,
           code: '',
-          install_command: `// Documentation ${flyonUIDoc.title}`,
+          install_command: `// Documentation ${blockusDoc.title}`,
         });
 
         // Clear the input and don't set any mode

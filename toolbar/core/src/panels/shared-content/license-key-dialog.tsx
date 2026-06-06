@@ -99,14 +99,12 @@ export function LicenseKeyDialog({
               </div>
               <div>
                 <DialogTitle className="font-semibold text-foreground">
-                  {existingLicenseKey
-                    ? 'Update License Key'
-                    : 'Enter License Key'}
+                  {existingLicenseKey ? 'Update API Key' : 'Enter API Key'}
                 </DialogTitle>
                 <Description className="text-foreground text-sm">
                   {existingLicenseKey
-                    ? 'Update your pro license key'
-                    : 'Enter your pro license key to unlock premium features'}
+                    ? 'Update your blockus API key'
+                    : 'Enter your blockus API key (bk_live_…) to unlock Pro blocks'}
                 </Description>
               </div>
             </div>
@@ -117,7 +115,7 @@ export function LicenseKeyDialog({
                 htmlFor="license-key"
                 className="mb-2 block font-medium text-foreground text-sm"
               >
-                License Key
+                API Key
               </label>
               <input
                 id="license-key"
@@ -125,7 +123,7 @@ export function LicenseKeyDialog({
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter your license key..."
+                placeholder="bk_live_…"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
                 disabled={isValidating}
                 autoFocus
@@ -158,8 +156,8 @@ export function LicenseKeyDialog({
                 {isValidating
                   ? 'Validating...'
                   : existingLicenseKey
-                    ? 'Update License Key'
-                    : 'Save License Key'}
+                    ? 'Update API Key'
+                    : 'Save API Key'}
               </Button>
             </div>
           </div>

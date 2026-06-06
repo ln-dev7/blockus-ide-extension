@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import {
+  BLOCKUS_API_KEY_STORAGE_KEY,
+  isValidApiKeyFormat,
+  validateApiKey,
+} from '@/api/blockus';
 
-// License key storage key
-const LICENSE_KEY_STORAGE_KEY = 'flyonui_pro_license_key';
+// blockus API key state. The key (bk_live_…) is what unlocks Pro blocks.
+// We keep the historical `useLicenseKey` name + shape so existing consumers
+// (settings panel, blocks list, chat) keep working without changes.
 
 interface LicenseKeyState {
   licenseKey: string | null;
@@ -20,7 +26,7 @@ export function useLicenseKey() {
 
   const loadLicenseKey = useCallback(async () => {
     try {
-      const storedData = localStorage.getItem(LICENSE_KEY_STORAGE_KEY);
+      const storedData = localStorage.getItem(BLOCKUS_API_KEY_STORAGE_KEY);
       if (storedData) {
         const parsed = JSON.parse(storedData);
         setLicenseState({
@@ -33,19 +39,19 @@ export function useLicenseKey() {
         });
       }
     } catch (error) {
-      console.warn('Failed to load license key from storage:', error);
+      console.warn('Failed to load blockus API key from storage:', error);
       // Clear invalid stored data
-      localStorage.removeItem(LICENSE_KEY_STORAGE_KEY);
+      localStorage.removeItem(BLOCKUS_API_KEY_STORAGE_KEY);
     }
   }, []);
 
-  // Load license key from storage on mount
+  // Load key from storage on mount
   useEffect(() => {
     loadLicenseKey();
 
     // Listen for storage changes (from other tabs/components)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === LICENSE_KEY_STORAGE_KEY) {
+      if (e.key === BLOCKUS_API_KEY_STORAGE_KEY) {
         loadLicenseKey();
       }
     };
@@ -62,45 +68,29 @@ export function useLicenseKey() {
       if (!key || typeof key !== 'string') {
         return false;
       }
-
-      const trimmedLicenseKey = key.trim();
-      const url = 'https://flyonui.com/api/mcp/validate-license-key';
-      // Will try to implement backend validation with the help of API.
-
-      // TODO: Update this staging URL to production when ready
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-license-key': trimmedLicenseKey,
-        },
-      });
-
-      if (!response.ok) {
-        console.error(
-          'License key validation request failed:',
-          response.status,
-        );
+      const trimmed = key.trim();
+      if (!isValidApiKeyFormat(trimmed)) {
         return false;
       }
-      return true;
-
-      // For demo purposes, consider any properly formatted key as valid
-      // In production, this should validate against your license server
+      // A key is "valid" when the blockus catalog reports it unlocks Pro.
+      return validateApiKey(trimmed);
     },
     [],
   );
 
   const saveLicenseKey = useCallback(
     async (key: string): Promise<void> => {
-      const trimmedKey = key.trim().toUpperCase();
+      // blockus keys are case-sensitive (base64url) — never uppercase them.
+      const trimmedKey = key.trim();
 
-      // Validate the key first
+      if (!isValidApiKeyFormat(trimmedKey)) {
+        throw new Error('Invalid API key. Keys start with "bk_live_".');
+      }
+
       const isValid = await validateLicenseKey(trimmedKey);
 
       if (!isValid) {
-        throw new Error('Invalid license key');
+        throw new Error('Invalid or non-Pro API key');
       }
 
       const licenseData = {
@@ -110,33 +100,29 @@ export function useLicenseKey() {
       };
 
       try {
-        // Store in localStorage
         localStorage.setItem(
-          LICENSE_KEY_STORAGE_KEY,
+          BLOCKUS_API_KEY_STORAGE_KEY,
           JSON.stringify(licenseData),
         );
 
-        // Update state immediately
-        const newState = {
+        setLicenseState({
           licenseKey: trimmedKey,
           isProUser: true,
           isValidated: true,
           lastValidated: new Date(),
-        };
-
-        setLicenseState(newState);
+        });
 
         // Trigger a storage event for other components/tabs to sync
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: LICENSE_KEY_STORAGE_KEY,
+            key: BLOCKUS_API_KEY_STORAGE_KEY,
             newValue: JSON.stringify(licenseData),
             storageArea: localStorage,
           }),
         );
       } catch (error) {
-        console.error('Failed to save license key:', error);
-        throw new Error('Failed to save license key');
+        console.error('Failed to save blockus API key:', error);
+        throw new Error('Failed to save API key');
       }
     },
     [validateLicenseKey],
@@ -144,7 +130,7 @@ export function useLicenseKey() {
 
   const removeLicenseKey = useCallback(() => {
     try {
-      localStorage.removeItem(LICENSE_KEY_STORAGE_KEY);
+      localStorage.removeItem(BLOCKUS_API_KEY_STORAGE_KEY);
       setLicenseState({
         licenseKey: null,
         isProUser: false,
@@ -152,17 +138,16 @@ export function useLicenseKey() {
         lastValidated: null,
       });
 
-      // Trigger a storage event for other components/tabs to sync
       window.dispatchEvent(
         new StorageEvent('storage', {
-          key: LICENSE_KEY_STORAGE_KEY,
+          key: BLOCKUS_API_KEY_STORAGE_KEY,
           newValue: null,
           storageArea: localStorage,
         }),
       );
     } catch (error) {
-      console.error('Failed to remove license key:', error);
-      throw new Error('Failed to remove license key');
+      console.error('Failed to remove blockus API key:', error);
+      throw new Error('Failed to remove API key');
     }
   }, []);
 
@@ -182,7 +167,7 @@ export function useLicenseKey() {
         };
 
         localStorage.setItem(
-          LICENSE_KEY_STORAGE_KEY,
+          BLOCKUS_API_KEY_STORAGE_KEY,
           JSON.stringify(licenseData),
         );
 
@@ -193,18 +178,18 @@ export function useLicenseKey() {
           lastValidated: new Date(),
         }));
       } else {
-        // License is no longer valid, remove it
+        // Key is no longer valid, remove it
         removeLicenseKey();
       }
 
       return isValid;
     } catch (error) {
-      console.error('Failed to refresh license validation:', error);
+      console.error('Failed to refresh API key validation:', error);
       return false;
     }
   }, [licenseState.licenseKey, validateLicenseKey, removeLicenseKey]);
 
-  // Helper to check if license needs revalidation (e.g., every 24 hours)
+  // Helper to check if key needs revalidation (e.g., every 24 hours)
   const needsRevalidation = useCallback((): boolean => {
     if (!licenseState.lastValidated) {
       return true;

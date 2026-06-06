@@ -2,8 +2,30 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { dispatchAgentCall } from '../utils/dispatch-agent-call';
 
+const BLOCKUS_BASE_URL = 'https://blockus.lndevui.com';
+const BLOCKUS_NAMESPACE = 'blockus';
+
+interface BlockusBlock {
+  id: string;
+  name: string;
+  category: string;
+  isPro: boolean;
+  previewImage?: string;
+  tags?: string[];
+  installable: boolean;
+  installCommand: string;
+}
+
+interface BlockusCatalog {
+  unlocked: boolean;
+  total: number;
+  blocks: BlockusBlock[];
+}
+
+// Sidebar webview that lists blockus blocks. Free blocks install for everyone;
+// Pro blocks unlock once a valid API key (bk_live_…) is set in settings.
 export class ApiDataProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'flyonui.apiDataView';
+  public static readonly viewType = 'blockus.apiDataView';
 
   private _view?: vscode.WebviewView;
 
@@ -17,518 +39,195 @@ export class ApiDataProvider implements vscode.WebviewViewProvider {
     this._view = webviewView;
 
     webviewView.webview.options = {
-      // Allow scripts in the webview
       enableScripts: true,
-
       localResourceRoots: [this._extensionUri],
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-    // Listen for messages from the webview
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
         case 'requestInitialData':
-          await this._sendInitialData();
-          break;
         case 'refresh':
-          this._refreshData();
+          await this._fetchCatalog();
           break;
-        case 'openItem':
-          vscode.window.showInformationMessage(`Opening item: ${data.item}`);
+        case 'saveApiKey':
+          await this._saveApiKey(data.apiKey ?? '');
           break;
-        case 'saveLicenseKey':
-          await this._saveLicenseKey(data.licenseKey);
+        case 'installBlock':
+          await this._installBlock(data.id);
           break;
-        case 'openFlyonuiPro':
-          vscode.env.openExternal(vscode.Uri.parse('https://flyonui.com/pro'));
-          break;
-        case 'validateLicense':
-          await this._validateLicense(data.licenseKey);
-          break;
-        case 'fetchApiData':
-          await this._fetchFlyonuiData();
-          break;
-        case 'copyToClipboard':
-          await vscode.env.clipboard.writeText(data.text);
-          vscode.window.showInformationMessage('📋 Path copied to clipboard!');
-          break;
-        case 'openComponent':
-          await this._fetchFlyonuiBlockData(data.path, data.name);
-          break;
-        case 'copyBlockCode':
-          await this._copyBlockCode(data.path);
-          break;
-        case 'sendToIDEAgent':
-          await this._sendToIDEAgent(data.path, data.name);
+        case 'sendToAgent':
+          await this._sendToAgent(data.id, data.name);
           break;
         case 'previewBlock':
-          await this._previewBlock(data.path, data.name);
+          if (data.id) {
+            vscode.env.openExternal(
+              vscode.Uri.parse(`${BLOCKUS_BASE_URL}/preview/${data.id}`),
+            );
+          }
+          break;
+        case 'openExternal':
+          if (data.url) {
+            vscode.env.openExternal(vscode.Uri.parse(data.url));
+          }
+          break;
+        case 'copyToClipboard':
+          await vscode.env.clipboard.writeText(data.text ?? '');
+          vscode.window.showInformationMessage('📋 Copied to clipboard!');
           break;
       }
     });
   }
 
-  private async _previewBlock(path: string, componentName: string) {
-    const licenseKey = this._getCurrentLicenseKey();
-
-    try {
-      const url = `https://flyonui.com/api/mcp${path}?type=mcp`;
-      const headers = {
-        Accept: '*/*',
-        'Content-Type': 'application/json',
-        'x-license-key': licenseKey,
-      };
-
-      const response = await fetch(url, { method: 'GET', headers });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const apiData: any = await response.json();
-      const previewUrl = apiData.iframeSrc;
-
-      if (previewUrl) {
-        vscode.env.openExternal(vscode.Uri.parse(previewUrl));
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        'Failed to fetch block preview from FlyonUI API',
-      );
-    }
+  private _getApiKey(): string {
+    const config = vscode.workspace.getConfiguration('blockus');
+    return config.get('apiKey', '');
   }
 
-  private async _fetchFlyonuiBlockData(
-    dataPath: string,
-    componentName: string,
-  ) {
-    // Show loading state
+  private _buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    };
+    const apiKey = this._getApiKey();
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    return headers;
+  }
+
+  private async _fetchCatalog() {
     if (this._view) {
-      this._view.webview.postMessage({
-        type: 'apiDataLoading',
-        loading: true,
-      });
+      this._view.webview.postMessage({ type: 'loading', loading: true });
     }
 
-    const licenseKey = this._getCurrentLicenseKey();
-
     try {
-      // Show loading state
-      const url = `https://flyonui.com/api/mcp${dataPath}?type=mcp`;
-      const headers = {
-        Accept: '*/*',
-        'Content-Type': 'application/json',
-        'x-license-key': licenseKey,
-      };
-
-      const response = await fetch(url, { method: 'GET', headers });
+      const response = await fetch(`${BLOCKUS_BASE_URL}/api/blocks`, {
+        method: 'GET',
+        headers: this._buildHeaders(),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiData: any = await response.json();
+      const catalog = (await response.json()) as BlockusCatalog;
 
-      // Handle case where API returns a JSON string instead of an object
-      let parsedData: any;
-      if (typeof apiData === 'string') {
-        parsedData = JSON.parse(apiData);
-      } else {
-        parsedData = apiData;
-      }
-
-      // Extract blocks data - handle different possible structures
-      let blocksData = null;
-      if (parsedData.blocks) {
-        blocksData = parsedData.blocks;
-      } else if (Array.isArray(parsedData)) {
-        blocksData = parsedData;
-      } else if (parsedData.data && Array.isArray(parsedData.data)) {
-        blocksData = parsedData.data;
-      } else {
-        // If no recognizable structure, send the whole data
-        blocksData = [parsedData];
-      }
-
-      // Send data to webview
-      if (this._view) {
-        const message = {
-          type: 'componentDetailsReceived',
-          data: blocksData,
-          componentName: componentName,
-          componentPath: dataPath,
-          loading: false,
-        };
-        this._view.webview.postMessage(message);
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        'Failed to fetch block data from FlyonUI API',
-      );
-
-      // Hide loading state and show error in webview
       if (this._view) {
         this._view.webview.postMessage({
-          type: 'componentDetailsReceived',
-          data: null,
-          componentName: componentName,
-          componentPath: dataPath,
+          type: 'catalog',
+          unlocked: catalog.unlocked,
+          total: catalog.total,
+          blocks: catalog.blocks,
           loading: false,
-          error: 'Failed to fetch block data',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching blockus catalog:', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch blocks from blockus';
+      vscode.window.showErrorMessage(`blockus: ${message}`);
+      if (this._view) {
+        this._view.webview.postMessage({
+          type: 'error',
+          message,
+          loading: false,
         });
       }
     }
   }
 
-  private async _fetchBlockCodeFromAPI(
-    dataPath: string,
-  ): Promise<string | null> {
-    const licenseKey = this._getCurrentLicenseKey();
-
+  private async _saveApiKey(apiKey: string) {
+    const trimmed = apiKey.trim();
     try {
-      const url = `https://flyonui.com/api/mcp${dataPath}?type=mcp`;
-      const headers = {
-        Accept: '*/*',
-        'Content-Type': 'application/json',
-        'x-license-key': licenseKey,
-      };
+      await vscode.workspace
+        .getConfiguration('blockus')
+        .update('apiKey', trimmed, vscode.ConfigurationTarget.Global);
 
-      const response = await fetch(url, { method: 'GET', headers });
+      if (trimmed && !trimmed.startsWith('bk_live_')) {
+        vscode.window.showWarningMessage(
+          'blockus API keys start with "bk_live_". Double-check your key.',
+        );
+      } else if (trimmed) {
+        vscode.window.showInformationMessage('blockus API key saved ✅');
+      }
 
+      // Refetch with the new key so Pro blocks unlock immediately.
+      await this._fetchCatalog();
+    } catch (error) {
+      console.error('Error saving API key:', error);
+      vscode.window.showErrorMessage('Failed to save blockus API key');
+    }
+  }
+
+  // Run the shadcn install command in the integrated terminal.
+  private async _installBlock(id: string) {
+    if (!id) return;
+    const command = `pnpm dlx shadcn@latest add @${BLOCKUS_NAMESPACE}/${id}`;
+    const terminal =
+      vscode.window.terminals.find((t) => t.name === 'blockus') ??
+      vscode.window.createTerminal('blockus');
+    terminal.show();
+    terminal.sendText(command);
+  }
+
+  // Pull a block's source from the registry and hand it to the IDE agent.
+  private async _sendToAgent(id: string, name?: string) {
+    if (!id) return;
+    try {
+      vscode.window.showInformationMessage('⏳ Fetching block source…');
+      const response = await fetch(`${BLOCKUS_BASE_URL}/r/${id}.json`, {
+        method: 'GET',
+        headers: this._buildHeaders(),
+      });
+
+      if (response.status === 401) {
+        vscode.window.showWarningMessage(
+          'This is a Pro block. Set your blockus API key (bk_live_…) to unlock it.',
+        );
+        return;
+      }
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const apiData: any = await response.json();
+      const item = (await response.json()) as {
+        files?: Array<{ target?: string; path?: string; content?: string }>;
+      };
+      const files = Array.isArray(item.files) ? item.files : [];
+      const sources = files
+        .map((f) => `// ${f.target || f.path}\n\n${f.content ?? ''}`)
+        .join('\n\n');
 
-      // Handle case where API returns a JSON string instead of an object
-      let parsedData: any;
-      if (typeof apiData === 'string') {
-        parsedData = JSON.parse(apiData);
-      } else {
-        parsedData = apiData;
-      }
+      const prompt = `Integrate this blockus block "${name || id}" into the current codebase.
 
-      // Extract the code from the response
-      // First, try to get blocks data similar to the existing method
-      let blocksData = null;
-      if (Array.isArray(parsedData.snippets)) blocksData = parsedData.snippets;
-      else blocksData = [parsedData];
-
-      // Format the code in each snippet
-      blocksData.forEach((block: any) => {
-        if (block.code) {
-          block.code = block.code.replace(/\\n/g, '\n').replace(/ {4}/g, '  ');
-        }
-      });
-
-      // Find the HTML snippet
-      const htmlSnippet = blocksData.find(
-        (block: any) => block.fileType === 'html' && block.code,
-      );
-      const cssSnippet = blocksData.find(
-        (block: any) => block.fileType === 'css' && block.code,
-      );
-      const jsSnippet = blocksData.find(
-        (block: any) => block.fileType === 'js' && block.code,
-      );
-
-      const parts = [];
-      if (htmlSnippet?.code) {
-        parts.push(`<!-- HTML Code -->\n\n${htmlSnippet.code}`);
-      }
-      if (cssSnippet?.code) {
-        parts.push(`<!-- CSS Code -->\n\n${cssSnippet.code}`);
-      }
-      if (jsSnippet?.code) {
-        parts.push(`<!-- JS Code -->\n\n${jsSnippet.code}`);
-      }
-      return parts.join('\n\n');
-    } catch (error) {
-      console.error('Error fetching block code from API:', error);
-      vscode.window.showErrorMessage(
-        'Failed to fetch block code from FlyonUI API',
-      );
-      return null;
-    }
-  }
-
-  private async _copyBlockCode(dataPath: string): Promise<void> {
-    try {
-      vscode.window.showInformationMessage('⏳ Fetching block code...');
-
-      const code = await this._fetchBlockCodeFromAPI(dataPath);
-
-      if (code) {
-        await vscode.env.clipboard.writeText(code);
-        vscode.window.showInformationMessage(
-          '📋 Block code copied to clipboard!',
-        );
-      } else {
-        vscode.window.showErrorMessage('Failed to fetch block code');
-      }
-    } catch (error) {
-      console.error('Error copying block code:', error);
-      vscode.window.showErrorMessage('Failed to copy block code');
-    }
-  }
-
-  private async _sendToIDEAgent(
-    dataPath: string,
-    componentName: string,
-  ): Promise<void> {
-    try {
-      vscode.window.showInformationMessage(
-        '⏳ Fetching block code and sending to IDE agent...',
-      );
-
-      const code = await this._fetchBlockCodeFromAPI(dataPath);
-
-      if (code) {
-        const prompt = `You need to Integrate this FlyonUI component "${componentName}" in this codebase. 
-
-Here is the HTML/CSS/JS code for the component:
-
-\`\`\`html
-${code}
+Install it first with:
+\`\`\`bash
+pnpm dlx shadcn@latest add @${BLOCKUS_NAMESPACE}/${id}
 \`\`\`
 
-Follow the below instructions to integrate this component into the codebase:
-1. Analyze currently existing codebase and our FlyonUI Component Code and see how this component can fit in
-2. Explain what this component does and how it works
-3. Provided code is in HTML/CSS/JS format, if the codebase is using any specific framework (React, Vue, Angular, etc.), convert the code accordingly
-4. Check if I need any additional CSS classes or dependencies to use this component
-5. Integrate this component into the codebase and provide the updated code files
-`;
+Here is its source for reference:
 
-        await dispatchAgentCall({
-          prompt: prompt,
-        });
+\`\`\`tsx
+${sources}
+\`\`\`
 
-        vscode.window.showInformationMessage(
-          '🤖 Code sent to IDE agent successfully!',
-        );
-      } else {
-        vscode.window.showErrorMessage(
-          'Failed to fetch block code for IDE agent',
-        );
-      }
+1. Run the install command (it pulls the block + its dependencies via the shadcn registry).
+2. Place the block where it fits the current page/layout.
+3. Wire up any props, data and links to the surrounding code.`;
+
+      await dispatchAgentCall({ prompt });
+      vscode.window.showInformationMessage('🤖 Sent to IDE agent!');
     } catch (error) {
-      console.error('Error sending to IDE agent:', error);
-      vscode.window.showErrorMessage('Failed to send code to IDE agent');
+      console.error('Error sending block to agent:', error);
+      vscode.window.showErrorMessage('Failed to send block to IDE agent');
     }
-  }
-
-  private async _fetchFlyonuiData() {
-    const licenseKey = this._getCurrentLicenseKey();
-
-    try {
-      // Show loading state
-      if (this._view) {
-        this._view.webview.postMessage({
-          type: 'apiDataLoading',
-          loading: true,
-        });
-      }
-
-      const response = await fetch(
-        'https://flyonui.com/api/mcp/instructions?path=block_metadata.json',
-        {
-          method: 'GET',
-          headers: {
-            Accept: '*/*',
-            'Content-Type': 'application/json',
-            'x-license-key': licenseKey,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const apiData: any = await response.json();
-
-      // Handle case where API returns a JSON string instead of an object
-      let parsedData: any;
-      if (typeof apiData === 'string') {
-        parsedData = JSON.parse(apiData);
-      } else {
-        parsedData = apiData;
-      }
-
-      const resultData: any[] = [];
-
-      parsedData.components.forEach((component: any) => {
-        if ('category' in component) {
-          component.components.forEach((subComponent: any) => {
-            resultData.push(subComponent);
-          });
-        } else {
-          resultData.push(component);
-        }
-      });
-
-      // Send data to webview
-      if (this._view) {
-        this._view.webview.postMessage({
-          type: 'apiDataReceived',
-          data: resultData,
-          loading: false,
-        });
-      }
-
-      vscode.window.showInformationMessage('API data fetched successfully!');
-    } catch (error) {
-      console.error('Error fetching FlyonUI data:', error);
-
-      let errorMessage = 'Failed to fetch data from FlyonUI API';
-      if (error instanceof Error) {
-        if (error.message.includes('401')) {
-          errorMessage = 'Invalid license key. Please check your license.';
-        } else if (error.message.includes('403')) {
-          errorMessage =
-            'Access denied. Please verify your license has the required permissions.';
-        } else if (error.message.includes('404')) {
-          errorMessage = 'API endpoint not found.';
-        } else {
-          errorMessage = `API Error: ${error.message}`;
-        }
-      }
-
-      vscode.window.showErrorMessage(errorMessage);
-
-      // Hide loading state
-      if (this._view) {
-        this._view.webview.postMessage({
-          type: 'apiDataReceived',
-          data: null,
-          error: errorMessage,
-          loading: false,
-        });
-      }
-    }
-  }
-
-  private async _refreshData() {
-    // Re-fetch the API data
-    await this._fetchFlyonuiData();
-  }
-
-  private async _sendInitialData() {
-    const licenseKey = this._getCurrentLicenseKey();
-
-    if (!licenseKey) {
-      // No license key, just send empty state
-      if (this._view) {
-        this._view.webview.postMessage({
-          type: 'initialData',
-          licenseKey: '',
-          isValid: false,
-        });
-      }
-      return;
-    }
-
-    // Validate the license key
-    const isValid = await this._validateLicenseKey(licenseKey);
-
-    if (this._view) {
-      this._view.webview.postMessage({
-        type: 'initialData',
-        licenseKey: licenseKey,
-        isValid: isValid,
-      });
-    }
-  }
-
-  private async _saveLicenseKey(licenseKey: string) {
-    try {
-      // Save license key to VS Code settings
-      await vscode.workspace
-        .getConfiguration('flyonui')
-        .update('licenseKey', licenseKey, vscode.ConfigurationTarget.Global);
-
-      // Validate the license key
-      const isValid = await this._validateLicenseKey(licenseKey);
-
-      if (isValid) {
-        vscode.window.showInformationMessage(
-          'License key saved successfully! ✅',
-        );
-        // Update the UI to show license status
-        if (this._view) {
-          this._view.webview.postMessage({
-            type: 'licenseValidated',
-            isValid: true,
-            licenseKey: licenseKey,
-          });
-        }
-      } else {
-        vscode.window.showWarningMessage(
-          'Invalid license key. Please check and try again.',
-        );
-        if (this._view) {
-          this._view.webview.postMessage({
-            type: 'licenseValidated',
-            isValid: false,
-            licenseKey: licenseKey,
-          });
-        }
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage('Failed to save license key');
-      console.error('Error saving license key:', error);
-    }
-  }
-
-  private async _validateLicense(licenseKey: string) {
-    const isValid = await this._validateLicenseKey(licenseKey);
-    if (this._view) {
-      this._view.webview.postMessage({
-        type: 'licenseValidated',
-        isValid: isValid,
-        licenseKey: licenseKey,
-      });
-    }
-  }
-
-  private async _validateLicenseKey(licenseKey: string): Promise<boolean> {
-    // For now, we'll implement a simple validation
-    const trimmedKey = licenseKey.trim();
-
-    try {
-      const response = await fetch(
-        'https://flyonui.com/api/mcp/validate-license-key',
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-license-key': trimmedKey,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        console.error('Invalid license key:', response.status);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error validating license key:', error);
-      return false;
-    }
-  }
-
-  private _getCurrentLicenseKey(): string {
-    const config = vscode.workspace.getConfiguration('flyonui');
-    return config.get('licenseKey', '');
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // Get path to media directory
     const mediaPath = vscode.Uri.joinPath(
       this._extensionUri,
       'out',
@@ -537,7 +236,6 @@ Follow the below instructions to integrate this component into the codebase:
       'media',
     );
 
-    // Get URIs for CSS and JS files using the found media path
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaPath, 'api-panel.css'),
     );
@@ -545,7 +243,6 @@ Follow the below instructions to integrate this component into the codebase:
       vscode.Uri.joinPath(mediaPath, 'api-panel.js'),
     );
 
-    // Read HTML template
     const htmlPath = vscode.Uri.joinPath(mediaPath, 'api-panel.html');
     let htmlContent: string;
 
@@ -557,7 +254,6 @@ Follow the below instructions to integrate this component into the codebase:
       return this._getErrorHtml('Failed to load HTML template');
     }
 
-    // Replace placeholders with actual URIs
     htmlContent = htmlContent
       .replace('{{styleUri}}', styleUri.toString())
       .replace('{{scriptUri}}', scriptUri.toString());

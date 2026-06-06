@@ -1,18 +1,18 @@
 import { cn } from '@/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BlockusLogo } from './blockus-logo';
 import { Context7Logo } from './context7-logo';
-import { FlyonUILogo } from './flyonui-logo';
 
 interface AtMenuProps {
-  onSelect: (type: 'docs' | 'blocks' | 'flyonui-docs') => void;
+  onSelect: (type: 'docs' | 'blocks' | 'blockus-docs') => void;
   onFocusReturn?: () => void;
   searchQuery?: string;
 }
 
 const options: Array<{
-  type: 'docs' | 'blocks' | 'flyonui-docs';
+  type: 'docs' | 'blocks' | 'blockus-docs';
   label: string;
-  Icon: 'Context7Logo' | 'SVGLLogo' | null;
+  Icon: 'Context7Logo' | 'BlockusLogo' | null;
 }> = [
   {
     type: 'docs',
@@ -20,14 +20,14 @@ const options: Array<{
     Icon: 'Context7Logo',
   },
   {
-    type: 'flyonui-docs',
-    label: 'FlyonUI Docs',
-    Icon: 'SVGLLogo',
+    type: 'blockus-docs',
+    label: 'blockus Docs',
+    Icon: 'BlockusLogo',
   },
   {
     type: 'blocks',
-    label: 'FlyonUI Blocks',
-    Icon: 'SVGLLogo',
+    label: 'blockus Blocks',
+    Icon: 'BlockusLogo',
   },
 ];
 
@@ -58,7 +58,7 @@ export function AtMenu({ onSelect, onFocusReturn, searchQuery }: AtMenuProps) {
   }, [filteredOptions.length]);
 
   const handleClick = useCallback(
-    (type: 'docs' | 'blocks' | 'flyonui-docs') => {
+    (type: 'docs' | 'blocks' | 'blockus-docs') => {
       onSelect(type);
     },
     [onSelect],
@@ -139,7 +139,7 @@ export function AtMenu({ onSelect, onFocusReturn, searchQuery }: AtMenuProps) {
           {Icon === 'Context7Logo' ? (
             <Context7Logo className="h-4 w-4" />
           ) : (
-            <FlyonUILogo
+            <BlockusLogo
               className={cn(
                 'h-4 w-4',
                 index === activeIndex

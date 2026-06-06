@@ -9,7 +9,7 @@ export function createGettingStartedPanel(
 ): vscode.WebviewPanel {
   const panel = vscode.window.createWebviewPanel(
     'stagewiseGettingStarted',
-    'Getting Started with FlyonUI IDE Extension',
+    'Getting Started with blockus IDE Extension',
     vscode.ViewColumn.One,
     {
       enableScripts: true,
@@ -30,11 +30,11 @@ export function createGettingStartedPanel(
             cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
           });
           terminal.show();
-          terminal.sendText('npx flyonui-extension-cli@latest', false);
+          terminal.sendText('npx blockus-extension-cli@latest', false);
           break;
         }
         case 'openApiPanel':
-          vscode.commands.executeCommand('flyonui.focusApiDataView');
+          vscode.commands.executeCommand('blockus.focusApiDataView');
           break;
         case 'openDiscord':
           vscode.env.openExternal(vscode.Uri.parse(message.url));
@@ -61,9 +61,9 @@ function getWebviewContent(
   const cspDomain =
     context.extensionMode === vscode.ExtensionMode.Development
       ? 'http://localhost:3000'
-      : 'https://flyonui.com';
+      : 'https://blockus.lndevui.com';
 
-  const proUrl = 'https://flyonui.com/pro';
+  const proUrl = 'https://blockus.lndevui.com/pricing';
 
   // Get path to media directory
   const mediaPath = vscode.Uri.joinPath(
@@ -82,7 +82,7 @@ function getWebviewContent(
     vscode.Uri.joinPath(mediaPath, 'getting-started.js'),
   );
 
-  // Get URI for the FlyonUI logo icon
+  // Get URI for the blockus logo icon
   const iconUri = webview.asWebviewUri(
     vscode.Uri.joinPath(context.extensionUri, 'icon.png'),
   );

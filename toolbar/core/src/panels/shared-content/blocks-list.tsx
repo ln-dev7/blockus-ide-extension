@@ -1,3 +1,4 @@
+import { BLOCKUS_BASE_URL } from '@/api/blockus';
 import { useBlockSearch, type BlockItem } from '@/hooks/use-block-search';
 import { useLicenseKey } from '@/hooks/use-license-key';
 import { cn } from '@/utils';
@@ -28,7 +29,7 @@ export interface BlocksListRef {
   selectActiveBlock: () => boolean;
 }
 
-const RECENT_BLOCKS_KEY = 'flyonui-toolbar-blocks-recent';
+const RECENT_BLOCKS_KEY = 'blockus-toolbar-blocks-recent';
 
 // Helper functions for localStorage
 const getRecentBlocks = (): BlockItem[] => {
@@ -76,31 +77,32 @@ export const BlocksList = forwardRef<BlocksListRef, BlocksListProps>(
       setRecentBlocks(getRecentBlocks());
     }, []);
 
-    // Popular blocks (can be expanded based on usage patterns)
+    // Popular blocks (blockus block ids). These show before the user searches;
+    // any block from the catalog becomes available as soon as they type.
     const POPULAR_BLOCKS: BlockItem[] = [
       {
-        path: '/marketing-ui/about-us/about-us-1',
-        title: 'About Us 1',
-        description:
-          "A vertical 'About Us' section featuring a centered headline, a descriptive paragraph about teamwork and success, a prominent purple call-to-action button labeled 'Read More', and a wide image of a diverse team meeting in a modern conference room placed below the text.",
+        path: 'hero-01',
+        title: 'Aurora-glow hero',
+        description: 'hero, free, centered, gradient, social proof',
         category: 'popular',
-        name: 'About Us 1',
+        name: 'Aurora-glow hero',
+        blockCategory: 'hero',
       },
       {
-        path: '/marketing-ui/hero/hero-1',
-        title: 'Hero 1',
-        description:
-          'A food-themed hero section with navigation bar, compelling headline with decorative underline, descriptive text, and call-to-action button over a high-quality food image background.',
+        path: 'pricing-01',
+        title: 'Pricing',
+        description: 'pricing, plans, comparison',
         category: 'popular',
-        name: 'Hero 1',
+        name: 'Pricing',
+        blockCategory: 'pricing',
       },
       {
-        path: '/marketing-ui/contact-us/contact-us-1',
-        title: 'Contact Us 1',
-        description:
-          "This 'Contact Us' section includes contact details like office hours, address, and phone numbers. The section also features a brief introduction about the company's offerings and a supportive image. It includes icons for office hours, address, additional office locations, and contact information, making it easy for users to get in touch with the team.",
+        path: 'footer-01',
+        title: 'Footer',
+        description: 'footer, nav, legal',
         category: 'popular',
-        name: 'Contact Us 1',
+        name: 'Footer',
+        blockCategory: 'footer',
       },
       // Add more popular blocks as needed
     ];
@@ -386,7 +388,10 @@ export const BlocksList = forwardRef<BlocksListRef, BlocksListProps>(
         {activeBlock && (
           <div className="flex items-center justify-center rounded-lg">
             <img
-              src={`https://cdn.flyonui.com/fy-assets/extension${activeBlock.path}.png?format=auto`}
+              src={
+                activeBlock.previewImage ??
+                `${BLOCKUS_BASE_URL}/preview/${activeBlock.path}`
+              }
               alt={activeBlock.title}
               className="size-full rounded-lg border border-border object-contain shadow-md"
             />

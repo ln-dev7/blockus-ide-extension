@@ -1,5 +1,5 @@
 {
-  "name": "stagewise",
+  "name": "blockus-ide-extension",
   "private": true,
   "scripts": {
     "build": "turbo run build",

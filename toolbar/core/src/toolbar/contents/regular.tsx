@@ -1,5 +1,6 @@
 import { usePanels } from '@/hooks/use-panels';
 import { usePlugins } from '@/hooks/use-plugins';
+import { BlockusLogo } from '@/panels/shared-content/blockus-logo';
 import { ToolbarButton } from '@/toolbar/components/button';
 import { ToolbarSection } from '@/toolbar/components/section';
 import { MessageCircleIcon, PuzzleIcon, SettingsIcon } from 'lucide-react';
@@ -12,6 +13,9 @@ export function RegularContent() {
     isChatOpen,
     openChat,
     closeChat,
+    isBlocksOpen,
+    openBlocks,
+    closeBlocks,
     openPluginName,
     closePlugin,
     openPlugin,
@@ -57,6 +61,13 @@ export function RegularContent() {
       )}
 
       <ToolbarSection>
+        <ToolbarButton
+          onClick={isBlocksOpen ? closeBlocks : openBlocks}
+          active={isBlocksOpen}
+        >
+          <BlockusLogo className="size-4" />
+        </ToolbarButton>
+
         <ToolbarButton
           onClick={
             isChatOpen

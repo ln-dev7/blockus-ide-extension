@@ -188,10 +188,11 @@ export function LicenseKeyManager() {
           <div className="flex-1 space-y-3">
             <div>
               <h4 className="font-medium text-foreground text-sm">
-                Unlock Pro Features
+                Unlock Pro Blocks
               </h4>
               <p className="mt-1 text-muted-foreground text-xs">
-                Enter your license key or upgrade to access premium features
+                Add your blockus API key (bk_live_…) or get Pro to unlock every
+                block
               </p>
             </div>
 
@@ -202,18 +203,18 @@ export function LicenseKeyManager() {
                 onClick={() => setIsDialogOpen(true)}
                 className="flex-1 text-xs"
               >
-                Add License Key
+                Add API Key
               </Button>
 
               <Button
                 size="sm"
                 onClick={() => {
-                  // Open upgrade URL or show upgrade dialog
-                  window.open('https://flyonui.com/pro', '_blank');
+                  // Open the blockus account / pricing page
+                  window.open('https://blockus.lndevui.com/pricing', '_blank');
                 }}
                 className="flex-1 text-xs"
               >
-                Upgrade to Pro
+                Get Pro
               </Button>
             </div>
           </div>

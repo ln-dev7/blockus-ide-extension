@@ -9,6 +9,7 @@ import {
 } from '@/hooks/use-draggable';
 import { usePanels } from '@/hooks/use-panels';
 import { usePlugins } from '@/hooks/use-plugins';
+import { BlocksPanel } from '@/components/blocks/blocks-panel';
 import { AgentConnectivityPanel } from '@/panels/agent-connectivity';
 import { ChatPanel } from '@/panels/chat';
 import { SettingsPanel } from '@/panels/settings';
@@ -16,7 +17,7 @@ import { Toolbar } from '@/toolbar';
 import { cn } from '@/utils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const TOOLBAR_POSITION_KEY = 'flyonui_toolbar_toolbar_position';
+const TOOLBAR_POSITION_KEY = 'blockus_toolbar_position';
 
 /**
  * Get the stored toolbar position from localStorage
@@ -217,6 +218,7 @@ function PanelsArea({
   const {
     isChatOpen,
     isSettingsOpen,
+    isBlocksOpen,
     isAgentConnectivityOpen,
     openPluginName,
   } = usePanels();
@@ -257,6 +259,10 @@ function PanelsArea({
     >
       <PanelWrapper position={position} isOpen={isChatOpen}>
         <ChatPanel />
+      </PanelWrapper>
+
+      <PanelWrapper position={position} isOpen={isBlocksOpen}>
+        <BlocksPanel />
       </PanelWrapper>
 
       <PanelWrapper position={position} isOpen={isSettingsOpen}>
