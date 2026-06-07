@@ -14,6 +14,7 @@ interface BlockCardProps {
 // (the toolbar cannot open the IDE terminal directly).
 export function BlockCard({ block, onSelect }: BlockCardProps) {
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!copied) return;
@@ -49,11 +50,12 @@ export function BlockCard({ block, onSelect }: BlockCardProps) {
         onClick={() => onSelect?.(block)}
         className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted"
       >
-        {block.previewImage ? (
+        {block.previewImage && !imgError ? (
           <img
             src={block.previewImage}
             alt={block.name}
             loading="lazy"
+            onError={() => setImgError(true)}
             className="size-full object-cover"
           />
         ) : (
