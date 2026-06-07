@@ -1,10 +1,16 @@
-import type { BlockusBlock } from '@/api/blockus';
+import {
+  type BlockusBlock,
+  getInstallCommand,
+  type PackageManager,
+} from '@/api/blockus';
 import { cn } from '@/utils';
 import { CheckIcon, CopyIcon, LockIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface BlockCardProps {
   block: BlockusBlock;
+  /** Package manager used to build the install command. */
+  packageManager?: PackageManager;
   /** Called when the user wants to add this block to the agent context. */
   onSelect?: (block: BlockusBlock) => void;
 }
@@ -12,7 +18,11 @@ interface BlockCardProps {
 // A single block tile: preview, name, Pro badge, and an install action.
 // In the browser toolbar "install" copies the shadcn command to the clipboard
 // (the toolbar cannot open the IDE terminal directly).
-export function BlockCard({ block, onSelect }: BlockCardProps) {
+export function BlockCard({
+  block,
+  packageManager = 'pnpm',
+  onSelect,
+}: BlockCardProps) {
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
 
@@ -23,20 +33,21 @@ export function BlockCard({ block, onSelect }: BlockCardProps) {
   }, [copied]);
 
   const locked = block.isPro && !block.installable;
+  const installCommand = getInstallCommand(block.id, packageManager);
 
   const handleInstall = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (locked) return;
       try {
-        await navigator.clipboard.writeText(block.installCommand);
+        await navigator.clipboard.writeText(installCommand);
         setCopied(true);
       } catch {
         // Clipboard may be unavailable in some embedding contexts.
         console.warn('Failed to copy install command');
       }
     },
-    [block.installCommand, locked],
+    [installCommand, locked],
   );
 
   return (
@@ -102,7 +113,7 @@ export function BlockCard({ block, onSelect }: BlockCardProps) {
           <button
             type="button"
             onClick={handleInstall}
-            title={block.installCommand}
+            title={installCommand}
             className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 font-medium text-[11px] text-foreground transition-colors hover:bg-muted"
           >
             {copied ? (

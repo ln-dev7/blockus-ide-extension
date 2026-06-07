@@ -175,6 +175,10 @@
     vscode.postMessage({ type: 'saveApiKey', apiKey });
   });
 
+  el('pm-select').addEventListener('change', (e) => {
+    vscode.postMessage({ type: 'setPackageManager', pm: e.target.value });
+  });
+
   let searchTimer = null;
   el('search-input').addEventListener('input', (e) => {
     clearTimeout(searchTimer);
@@ -198,6 +202,9 @@
           total: data.total || 0,
           blocks: Array.isArray(data.blocks) ? data.blocks : [],
         };
+        if (data.packageManager) {
+          el('pm-select').value = data.packageManager;
+        }
         renderCategories();
         renderBlocks();
         break;

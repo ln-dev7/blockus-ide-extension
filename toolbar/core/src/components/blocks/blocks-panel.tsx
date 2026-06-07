@@ -1,4 +1,8 @@
-import { type BlockusBlock, fetchCatalog } from '@/api/blockus';
+import {
+  type BlockusBlock,
+  fetchCatalog,
+  PACKAGE_MANAGERS,
+} from '@/api/blockus';
 import { Button } from '@/components/ui/button';
 import {
   Panel,
@@ -8,6 +12,7 @@ import {
 } from '@/components/ui/panel';
 import { useChatState } from '@/hooks/use-chat-state';
 import { useLicenseKey } from '@/hooks/use-license-key';
+import { usePackageManager } from '@/hooks/use-package-manager';
 import { usePanels } from '@/hooks/use-panels';
 import { Loader2Icon, RefreshCwIcon, XIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -23,6 +28,7 @@ import { ALL_CATEGORIES, CategoryFilter } from './category-filter';
 export function BlocksPanel() {
   const { closeBlocks } = usePanels();
   const { licenseKey, isProUser } = useLicenseKey();
+  const { packageManager, setPackageManager } = usePackageManager();
   const chatState = useChatState();
 
   const [blocks, setBlocks] = useState<BlockusBlock[]>([]);
@@ -113,7 +119,27 @@ export function BlocksPanel() {
       />
       <PanelContent className="flex flex-col gap-3">
         <ApiKeyInput onChange={loadBlocks} />
-        <BlockSearch value={query} onChange={setQuery} />
+        <div className="flex items-stretch gap-2">
+          <div className="flex-1">
+            <BlockSearch value={query} onChange={setQuery} />
+          </div>
+          <select
+            value={packageManager}
+            onChange={(e) =>
+              setPackageManager(
+                e.target.value as (typeof PACKAGE_MANAGERS)[number],
+              )
+            }
+            title="Package manager used for the install command"
+            className="rounded-md border border-border bg-background px-2 text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-muted-foreground"
+          >
+            {PACKAGE_MANAGERS.map((pm) => (
+              <option key={pm} value={pm}>
+                {pm}
+              </option>
+            ))}
+          </select>
+        </div>
         {categories.length > 0 && (
           <CategoryFilter
             categories={categories}
@@ -145,6 +171,7 @@ export function BlocksPanel() {
               <BlockCard
                 key={block.id}
                 block={block}
+                packageManager={packageManager}
                 onSelect={handleSelect}
               />
             ))}

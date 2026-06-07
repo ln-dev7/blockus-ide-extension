@@ -3,7 +3,7 @@
   "displayName": "blockus IDE Extension",
   "private": true,
   "description": "Browse and install blockus blocks — production-ready React blocks — without leaving your editor.",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "ln-dev",
   "icon": "icon.png",
   "engines": {
@@ -93,6 +93,17 @@
             "default": "",
             "description": "Your blockus API key (bk_live_…). Get yours at https://blockus.lndevui.com/account/registry-token",
             "markdownDescription": "Your blockus API key (bk_live_…) used to unlock Pro blocks. Get yours at [blockus](https://blockus.lndevui.com/account/registry-token)."
+          },
+          "blockus.packageManager": {
+            "type": "string",
+            "enum": [
+              "pnpm",
+              "npm",
+              "yarn",
+              "bun"
+            ],
+            "default": "pnpm",
+            "description": "Package manager used to build the shadcn install command for a block."
           }
         }
       }

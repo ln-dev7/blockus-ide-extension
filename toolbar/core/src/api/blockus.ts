@@ -77,9 +77,28 @@ export async function fetchBlocks(
   return catalog.blocks;
 }
 
-/** Generate the shadcn CLI command that installs a block by id. */
-export function getInstallCommand(blockId: string): string {
-  return `pnpm dlx shadcn@latest add @${BLOCKUS_NAMESPACE}/${blockId}`;
+export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';
+export const PACKAGE_MANAGERS: PackageManager[] = ['pnpm', 'npm', 'yarn', 'bun'];
+
+/** localStorage key under which the chosen package manager is persisted. */
+export const BLOCKUS_PACKAGE_MANAGER_STORAGE_KEY = 'blockus_package_manager';
+
+/** Generate the shadcn CLI command that installs a block by id, per package manager. */
+export function getInstallCommand(
+  blockId: string,
+  pm: PackageManager = 'pnpm',
+): string {
+  const slug = `@${BLOCKUS_NAMESPACE}/${blockId}`;
+  switch (pm) {
+    case 'npm':
+      return `npx shadcn@latest add ${slug}`;
+    case 'yarn':
+      return `yarn dlx shadcn@latest add ${slug}`;
+    case 'bun':
+      return `bunx --bun shadcn@latest add ${slug}`;
+    default:
+      return `pnpm dlx shadcn@latest add ${slug}`;
+  }
 }
 
 /** URL of a single block's registry item JSON (used to pull source for the agent). */

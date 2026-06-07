@@ -98,7 +98,25 @@ body {
 
 /* --- toolbar / categories ------------------------------------------------ */
 .toolbar-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
   margin-bottom: 8px;
+}
+
+.pm-select {
+  flex: 0 0 auto;
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
+  border: 1px solid var(--vscode-dropdown-border, var(--bk-border));
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pm-select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
 }
 
 .categories {

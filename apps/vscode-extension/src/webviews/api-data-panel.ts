@@ -5,6 +5,24 @@ import { dispatchAgentCall } from '../utils/dispatch-agent-call';
 const BLOCKUS_BASE_URL = 'https://blockus.lndevui.com';
 const BLOCKUS_NAMESPACE = 'blockus';
 
+type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';
+const PACKAGE_MANAGERS: PackageManager[] = ['pnpm', 'npm', 'yarn', 'bun'];
+
+// Build the shadcn install command for a block, per package manager.
+function installCommandFor(pm: PackageManager, id: string): string {
+  const slug = `@${BLOCKUS_NAMESPACE}/${id}`;
+  switch (pm) {
+    case 'npm':
+      return `npx shadcn@latest add ${slug}`;
+    case 'yarn':
+      return `yarn dlx shadcn@latest add ${slug}`;
+    case 'bun':
+      return `bunx --bun shadcn@latest add ${slug}`;
+    default:
+      return `pnpm dlx shadcn@latest add ${slug}`;
+  }
+}
+
 interface BlockusBlock {
   id: string;
   name: string;
@@ -54,6 +72,9 @@ export class ApiDataProvider implements vscode.WebviewViewProvider {
         case 'saveApiKey':
           await this._saveApiKey(data.apiKey ?? '');
           break;
+        case 'setPackageManager':
+          await this._setPackageManager(data.pm);
+          break;
         case 'installBlock':
           await this._installBlock(data.id);
           break;
@@ -83,6 +104,22 @@ export class ApiDataProvider implements vscode.WebviewViewProvider {
   private _getApiKey(): string {
     const config = vscode.workspace.getConfiguration('blockus');
     return config.get('apiKey', '');
+  }
+
+  private _getPackageManager(): PackageManager {
+    const pm = vscode.workspace
+      .getConfiguration('blockus')
+      .get<string>('packageManager', 'pnpm');
+    return (PACKAGE_MANAGERS as string[]).includes(pm)
+      ? (pm as PackageManager)
+      : 'pnpm';
+  }
+
+  private async _setPackageManager(pm: string) {
+    const valid = (PACKAGE_MANAGERS as string[]).includes(pm) ? pm : 'pnpm';
+    await vscode.workspace
+      .getConfiguration('blockus')
+      .update('packageManager', valid, vscode.ConfigurationTarget.Global);
   }
 
   private _buildHeaders(): Record<string, string> {
@@ -120,6 +157,7 @@ export class ApiDataProvider implements vscode.WebviewViewProvider {
           unlocked: catalog.unlocked,
           total: catalog.total,
           blocks: catalog.blocks,
+          packageManager: this._getPackageManager(),
           loading: false,
         });
       }
@@ -166,7 +204,7 @@ export class ApiDataProvider implements vscode.WebviewViewProvider {
   // Run the shadcn install command in the integrated terminal.
   private async _installBlock(id: string) {
     if (!id) return;
-    const command = `pnpm dlx shadcn@latest add @${BLOCKUS_NAMESPACE}/${id}`;
+    const command = installCommandFor(this._getPackageManager(), id);
     const terminal =
       vscode.window.terminals.find((t) => t.name === 'blockus') ??
       vscode.window.createTerminal('blockus');
@@ -202,11 +240,12 @@ export class ApiDataProvider implements vscode.WebviewViewProvider {
         .map((f) => `// ${f.target || f.path}\n\n${f.content ?? ''}`)
         .join('\n\n');
 
+      const installCmd = installCommandFor(this._getPackageManager(), id);
       const prompt = `Integrate this blockus block "${name || id}" into the current codebase.
 
 Install it first with:
 \`\`\`bash
-pnpm dlx shadcn@latest add @${BLOCKUS_NAMESPACE}/${id}
+${installCmd}
 \`\`\`
 
 Here is its source for reference:
